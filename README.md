@@ -1,59 +1,77 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Universes
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Universes is an experimental, universe-centric task and idea management system.
+Instead of organizing work as flat task lists, it groups tasks, ideas, and logs
+inside evolving “Universes” — areas of focus that shift over time.
 
-## About Laravel
+## Why this exists
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Most productivity tools assume tasks are the primary unit of work.
+Universes explores a different model: work is organized around *contexts*,
+not tasks.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+This project investigates:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Context-first organization
+- Tasks belonging to multiple areas of focus
+- The relationship between planning, execution, and reflection (logs)
+- How “today” views can surface meaning without overwhelming
 
-## Learning Laravel
+## Core concepts
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- **Universes**  
+  Areas of focus that move through states (next small steps, in focus, in orbit, dormant).
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+- **Tasks**  
+  Actionable items that belong to one or more universes.
 
-## Laravel Sponsors
+- **Ideas**  
+  Non-actionable thoughts, grouped into idea pools connected to universes.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- **Logs**  
+  Lightweight records of time, notes, or reflections tied to tasks or ideas.
 
-### Premium Partners
+## Project status
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+This is an active experiment and portfolio project.
+The data model and UI are evolving, and parts of the system are intentionally
+unfinished or in flux.
 
-## Contributing
+The goal is exploration, not production readiness.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Development approach
 
-## Code of Conduct
+Much of this project was built using an AI-assisted, design-led workflow:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- The system was designed first through writing and diagrams
+- AI tools were used to scaffold, refactor, and explore implementations
+- Architectural decisions were reviewed and adjusted by hand
 
-## Security Vulnerabilities
+The focus is on system design, UX reasoning, and iterative refinement.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Running locally
 
-## License
+### Prerequisites
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+- PHP 8.2 or higher
+- Composer
+- SQLite (default database, no setup required)
+
+### Setup steps
+
+```bash
+git clone <repository-url>
+cd universe-organizer
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan serve
+```
+
+The application will be available at `http://localhost:8000`.
+
+**Note:** This project uses plain CSS files served directly from the `public/css/` directory. No build step or Node.js is required for the frontend assets.
+
+### Database
+
+This project uses SQLite by default. The database file is located at `database/database.sqlite` and will be created automatically when you run migrations.
