@@ -59,9 +59,21 @@ class LogController extends Controller
         $validated = $request->validate([
             'loggable_type' => 'nullable|string',
             'loggable_id' => 'nullable|integer',
-            'minutes' => 'nullable|integer|min:0',
+            'minutes' => 'nullable|numeric|min:0',
+            'time_unit' => 'nullable|string|in:minutes,hours',
             'notes' => 'nullable|string',
         ]);
+
+        // Convert minutes to minutes if provided
+        $minutes = null;
+        if (isset($validated['minutes']) && $validated['minutes'] !== null) {
+            $timeUnit = $validated['time_unit'] ?? 'hours'; // Default to hours
+            if ($timeUnit === 'hours') {
+                $minutes = (int) round($validated['minutes'] * 60);
+            } else {
+                $minutes = (int) round($validated['minutes']);
+            }
+        }
 
         // If loggable_type is empty, set both to null for standalone logs
         if (empty($validated['loggable_type']) || empty($validated['loggable_id'])) {
@@ -69,7 +81,12 @@ class LogController extends Controller
             $validated['loggable_id'] = null;
         }
 
-        Log::create($validated);
+        Log::create([
+            'loggable_type' => $validated['loggable_type'],
+            'loggable_id' => $validated['loggable_id'],
+            'minutes' => $minutes,
+            'notes' => $validated['notes'] ?? null,
+        ]);
 
         // Redirect back to referer if available, otherwise to logs index
         $referer = $request->input('referer') ?? $request->header('referer');
@@ -104,9 +121,21 @@ class LogController extends Controller
         $validated = $request->validate([
             'loggable_type' => 'nullable|string',
             'loggable_id' => 'nullable|integer',
-            'minutes' => 'nullable|integer|min:0',
+            'minutes' => 'nullable|numeric|min:0',
+            'time_unit' => 'nullable|string|in:minutes,hours',
             'notes' => 'nullable|string',
         ]);
+
+        // Convert minutes to minutes if provided
+        $minutes = null;
+        if (isset($validated['minutes']) && $validated['minutes'] !== null) {
+            $timeUnit = $validated['time_unit'] ?? 'hours'; // Default to hours
+            if ($timeUnit === 'hours') {
+                $minutes = (int) round($validated['minutes'] * 60);
+            } else {
+                $minutes = (int) round($validated['minutes']);
+            }
+        }
 
         // If loggable_type is empty, set both to null for standalone logs
         if (empty($validated['loggable_type']) || empty($validated['loggable_id'])) {
@@ -114,7 +143,12 @@ class LogController extends Controller
             $validated['loggable_id'] = null;
         }
 
-        $log->update($validated);
+        $log->update([
+            'loggable_type' => $validated['loggable_type'],
+            'loggable_id' => $validated['loggable_id'],
+            'minutes' => $minutes,
+            'notes' => $validated['notes'] ?? null,
+        ]);
 
         return redirect()->route('logs.index');
     }

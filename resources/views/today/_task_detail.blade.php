@@ -35,7 +35,27 @@
         <form method="POST" action="{{ route('tasks.log', $task) }}" class="inline-form task-action-form" id="log-task-form-{{ $task->id }}">
             @csrf
             <div class="log-form-fields" style="display: none;">
-                <input type="number" name="minutes" placeholder="Minutes" min="0" class="form-input-small">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                    <input type="number" 
+                           name="minutes" 
+                           id="log-minutes-detail-{{ $task->id }}"
+                           data-original-minutes="0"
+                           placeholder="Time" 
+                           min="0" 
+                           step="0.25"
+                           class="form-input-small"
+                           style="flex: 1; min-width: 100px;">
+                    <div style="display: flex; gap: 0.25rem; align-items: center;">
+                        <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-size: 0.85em; cursor: pointer;">
+                            <input type="radio" name="time_unit" value="minutes" id="log-time-unit-minutes-detail-{{ $task->id }}">
+                            <span>Min</span>
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-size: 0.85em; cursor: pointer;">
+                            <input type="radio" name="time_unit" value="hours" id="log-time-unit-hours-detail-{{ $task->id }}" checked>
+                            <span>Hr</span>
+                        </label>
+                    </div>
+                </div>
                 <textarea name="notes" placeholder="Notes" rows="2" class="form-input-small"></textarea>
             </div>
             <button type="button" class="btn-action btn-log" onclick="toggleLogForm({{ $task->id }})">Log</button>

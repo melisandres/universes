@@ -9,59 +9,23 @@
  * - Recurring task toggle
  * - Status pill updates
  * - Complete checkbox with delay
+ * - Time unit conversion (minutes/hours)
  */
 class TaskCardEditor {
-    constructor(taskId, options = {}) {
+    constructor(taskId) {
         this.taskId = taskId;
-        this.options = {
-            completeDelay: 1000, // ms delay before completing task
-            ...options
-        };
-        
-        // State
         this.universeData = {};
         this.universeIndex = 0;
-        this.completeTimeout = null;
-        
-        // DOM elements (will be cached)
-        this.elements = {};
-        
-        // Initialize
         this.init();
     }
     
-    /**
-     * Initialize the editor
-     */
     init() {
-        this.cacheElements();
         this.parseDataAttributes();
+        this.cacheElements();
         this.attachEventListeners();
-    }
-    
-    /**
-     * Cache DOM elements for this task
-     */
-    cacheElements() {
-        const id = this.taskId;
-        this.elements = {
-            viewMode: document.getElementById(`task-view-${id}`),
-            editMode: document.getElementById(`task-edit-${id}`),
-            editForm: document.querySelector(`.task-edit-form[data-task-id="${id}"]`),
-            editBtn: document.querySelector(`.edit-task-btn[data-task-id="${id}"]`),
-            cancelBtn: document.querySelector(`.cancel-task-edit-btn[data-task-id="${id}"]`),
-            statusPill: document.getElementById(`status-pill-${id}`),
-            statusInput: document.getElementById(`status-input-${id}`),
-            deadlineCheckbox: document.getElementById(`deadline-checkbox-${id}`),
-            deadlineContainer: document.getElementById(`deadline-container-${id}`),
-            deadlineInput: document.getElementById(`deadline-${id}`),
-            todayBtn: document.querySelector(`.btn-today[data-task-id="${id}"]`),
-            recurringCheckbox: document.getElementById(`recurring-checkbox-${id}`),
-            recurringContainer: document.getElementById(`recurring-task-container-${id}`),
-            universesContainer: document.getElementById(`universes-container-${id}`),
-            addUniverseBtn: document.querySelector(`.add-universe-btn[data-task-id="${id}"]`),
-            completeCheckbox: document.getElementById(`complete-checkbox-${id}`)
-        };
+        this.toggleDeadlineInput(); // Initialize deadline visibility
+        this.toggleRecurringTaskDropdown(); // Initialize recurring visibility
+        this.updateStatusPillFromDeadline(); // Initialize status pill based on deadline
     }
     
     /**
@@ -88,41 +52,76 @@ class TaskCardEditor {
         }
     }
     
-    /**
-     * Attach all event listeners
-     */
+    cacheElements() {
+        const id = this.taskId;
+        this.elements = {
+            viewMode: document.getElementById(`task-view-${id}`),
+            editMode: document.getElementById(`task-edit-${id}`),
+            editForm: document.querySelector(`.task-edit-form-simple[data-task-id="${id}"]`),
+            taskName: document.querySelector(`.task-name-clickable[data-task-id="${id}"]`),
+            cancelBtn: document.querySelector(`.cancel-edit-btn[data-task-id="${id}"]`),
+            deadlineCheckbox: document.getElementById(`deadline-checkbox-${id}`),
+            deadlineContainer: document.getElementById(`deadline-container-${id}`),
+            deadlineInput: document.getElementById(`deadline-${id}`),
+            todayBtn: document.querySelector(`.btn-today[data-task-id="${id}"]`),
+            recurringCheckbox: document.getElementById(`recurring-checkbox-${id}`),
+                recurringContainer: document.getElementById(`recurring-task-container-${id}`),
+                universesContainer: document.getElementById(`universes-container-${id}`),
+                addUniverseBtn: document.querySelector(`.add-universe-btn[data-task-id="${id}"]`),
+                completeCheckbox: document.querySelector(`.complete-task-checkbox[data-task-id="${id}"]`),
+                skipBtn: document.querySelector(`.skip-task-btn[data-task-id="${id}"]`),
+                deleteBtn: document.querySelector(`.delete-task-btn[data-task-id="${id}"]`),
+                completeAndLogBtn: document.querySelector(`.complete-and-log-btn[data-task-id="${id}"]`)
+            };
+        }
+    
     attachEventListeners() {
-        // Edit/Cancel toggle
-        if (this.elements.editBtn) {
-            this.elements.editBtn.addEventListener('click', () => this.toggleEditMode(true));
+        // Edit/Cancel toggle - task name is clickable
+        if (this.elements.taskName) {
+            this.elements.taskName.addEventListener('click', () => this.toggleEditMode(true));
         }
         if (this.elements.cancelBtn) {
             this.elements.cancelBtn.addEventListener('click', () => this.toggleEditMode(false));
         }
         
-        // Form submission
-        if (this.elements.editForm) {
-            this.elements.editForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
-        }
+            // Form submission
+            if (this.elements.editForm) {
+                this.elements.editForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
+            }
+
+            // Complete checkbox with delay
+            if (this.elements.completeCheckbox) {
+                this.completeTimeout = null;
+                this.elements.completeCheckbox.addEventListener('change', (e) => this.handleCompleteCheckbox(e));
+            }
         
-        // Deadline checkbox (using data-action attribute)
-        if (this.elements.deadlineCheckbox) {
-            this.elements.deadlineCheckbox.addEventListener('change', () => this.toggleDeadlineInput());
-        }
-        
-        // Recurring checkbox (using data-action attribute)
-        if (this.elements.recurringCheckbox) {
-            this.elements.recurringCheckbox.addEventListener('change', () => this.toggleRecurringTaskDropdown());
-        }
-        
-        // Deadline input change
-        if (this.elements.deadlineInput) {
-            this.elements.deadlineInput.addEventListener('change', () => this.updateStatusPillFromDeadline());
-        }
+        // Deadline checkbox toggle (handled above with status pill update)
         
         // Today button
         if (this.elements.todayBtn) {
-            this.elements.todayBtn.addEventListener('click', () => this.setDeadlineToday());
+            this.elements.todayBtn.addEventListener('click', () => {
+                this.setDeadlineToday();
+                this.updateStatusPillFromDeadline();
+            });
+        }
+
+        // Deadline input change - update status pill
+        if (this.elements.deadlineInput) {
+            this.elements.deadlineInput.addEventListener('change', () => this.updateStatusPillFromDeadline());
+            this.elements.deadlineInput.addEventListener('input', () => this.updateStatusPillFromDeadline());
+        }
+
+        // Deadline checkbox change - update status pill
+        if (this.elements.deadlineCheckbox) {
+            this.elements.deadlineCheckbox.addEventListener('change', () => {
+                this.toggleDeadlineInput();
+                this.updateStatusPillFromDeadline();
+            });
+        }
+        
+        // Recurring checkbox toggle
+        if (this.elements.recurringCheckbox) {
+            this.elements.recurringCheckbox.addEventListener('change', () => this.toggleRecurringTaskDropdown());
         }
         
         // Universe add/remove buttons (using event delegation)
@@ -134,277 +133,85 @@ class TaskCardEditor {
             });
         }
         
-        if (this.elements.addUniverseBtn) {
-            this.elements.addUniverseBtn.addEventListener('click', () => this.addUniverseRow());
-        }
-        
-        // Complete checkbox
-        if (this.elements.completeCheckbox) {
-            this.initCompleteCheckbox();
-        }
-        
-        // Delete form confirmation
-        const deleteForm = document.querySelector(`.task-delete-form[data-task-id="${this.taskId}"]`);
-        if (deleteForm) {
-            deleteForm.addEventListener('submit', (e) => {
-                if (!confirm('Are you sure you want to delete this task?')) {
-                    e.preventDefault();
-                }
-            });
-        }
-    }
-    
-    /**
-     * Toggle edit mode on/off
-     */
-    toggleEditMode(showEdit) {
-        if (showEdit) {
-            if (this.elements.viewMode) this.elements.viewMode.style.display = 'none';
+            if (this.elements.addUniverseBtn) {
+                this.elements.addUniverseBtn.addEventListener('click', () => this.addUniverseRow());
+            }
+
+            // Complete checkbox with delay
+            if (this.elements.completeCheckbox) {
+                this.completeTimeout = null;
+                this.elements.completeCheckbox.addEventListener('change', (e) => this.handleCompleteCheckbox(e));
+            }
+
+            // Skip button (in edit form)
+            if (this.elements.skipBtn) {
+                this.elements.skipBtn.addEventListener('click', (e) => this.handleSkipTask(e));
+            }
+
+            // Delete button
+            if (this.elements.deleteBtn) {
+                this.elements.deleteBtn.addEventListener('click', (e) => this.handleDeleteTask(e));
+            }
+
+            // Log form submission (using event delegation since form is in edit mode)
             if (this.elements.editMode) {
-                this.elements.editMode.classList.remove('d-none');
-                this.elements.editMode.style.display = 'block';
-            }
-        } else {
-            if (this.elements.viewMode) this.elements.viewMode.style.display = 'flex';
-            if (this.elements.editMode) {
-                this.elements.editMode.classList.add('d-none');
-                this.elements.editMode.style.display = 'none';
-            }
-        }
-    }
-    
-    /**
-     * Handle form submission
-     */
-    async handleFormSubmit(e) {
-        e.preventDefault();
-        
-        // Clear deadline if checkbox is unchecked
-        this.clearDeadlineIfUnchecked();
-        
-        const form = this.elements.editForm;
-        const formData = new FormData(form);
-        const submitBtn = form.querySelector('button[type="submit"]');
-        const originalText = submitBtn ? submitBtn.textContent : 'Save';
-        
-        // Ensure _method is set
-        if (!formData.has('_method')) {
-            formData.append('_method', 'PUT');
-        }
-        
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Saving...';
-        }
-        
-        try {
-            // Debug: Log form action and data
-            console.log('Submitting form:', {
-                action: form.action,
-                method: form.method,
-                taskId: this.taskId,
-                _method: formData.get('_method'),
-                hasToken: formData.has('_token')
-            });
-            
-            const response = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': formData.get('_token'),
-                    'Accept': 'application/json'
-                },
-                body: formData
-            });
-            
-            // Note: We can't check response.ok before reading body, but we can check status
-            // We'll handle 404 in the error handling below after reading the response
-            
-            // Check for redirect
-            if (response.redirected) {
-                console.error('Server returned redirect instead of JSON!');
-                const shouldReload = confirm('Task may have been saved, but server returned HTML instead of JSON. Reload page to see changes?');
-                if (shouldReload) {
-                    window.location.reload();
-                } else if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
+                const logForm = this.elements.editMode.querySelector('.task-log-form');
+                if (logForm) {
+                    // Use a bound method to allow removal if needed
+                    this.boundHandleLogSubmit = (e) => this.handleLogSubmit(e);
+                    logForm.addEventListener('submit', this.boundHandleLogSubmit);
                 }
-                return;
+            }
+
+            // Complete and Log button
+            if (this.elements.completeAndLogBtn) {
+                this.elements.completeAndLogBtn.addEventListener('click', (e) => this.handleCompleteAndLog(e));
             }
             
-            // Check content type
-            const contentType = response.headers.get('Content-Type') || '';
+            // Time unit radio buttons and estimated time input
+            const timeInput = document.getElementById(`estimated-time-${this.taskId}`);
+            const timeUnitRadios = document.querySelectorAll(`input[name="time_unit"][id$="-${this.taskId}"]`);
             
-            // Try to parse as JSON (even for error responses)
-            let data;
-            try {
-                const text = await response.text();
-                if (text) {
-                    data = JSON.parse(text);
-                } else {
-                    data = {};
-                }
-            } catch (e) {
-                console.error('Failed to parse response as JSON:', e);
-                if (!contentType.includes('application/json')) {
-                    console.error('Response is not JSON! Content-Type:', contentType);
-                    const shouldReload = confirm('Error: Server returned HTML instead of JSON. The task may have been saved. Reload page to see changes?');
-                    if (shouldReload) {
-                        window.location.reload();
-                    } else if (submitBtn) {
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = originalText;
-                    }
-                    return;
-                }
-                data = {};
-            }
-            
-            if (!response.ok) {
-                let errorMessage = 'Error updating task';
-                if (response.status === 404) {
-                    errorMessage = 'Task not found (404). The task may have been deleted.';
-                } else if (data.errors) {
-                    errorMessage = Object.values(data.errors).flat().join('\n');
-                } else if (data.message) {
-                    errorMessage = data.message;
-                }
-                console.error('Request failed:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    data: data
+            // Initialize stored minutes value from data attribute or current value
+            if (timeInput) {
+                const originalMinutes = parseFloat(timeInput.dataset.originalMinutes) || 0;
+                timeInput.dataset.storedMinutes = originalMinutes.toString();
+                
+                // Update stored minutes whenever input changes
+                timeInput.addEventListener('input', () => {
+                    this.updateStoredMinutes();
                 });
-                alert('Error: ' + errorMessage);
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
-                }
-                return;
             }
             
-            if (data.success) {
-                console.log('Task updated successfully, reloading page');
-                window.location.reload();
-            } else {
-                alert('Error updating task');
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
-                }
-            }
-        } catch (error) {
-            console.error('Fetch error:', error);
-            alert('Error: ' + (error.message || 'Error updating task'));
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
-            }
-        }
-    }
-    
-    /**
-     * Toggle deadline input visibility
-     */
-    toggleDeadlineInput() {
-        const checkbox = this.elements.deadlineCheckbox;
-        const container = this.elements.deadlineContainer;
-        const input = this.elements.deadlineInput;
-        
-        if (!checkbox || !container || !input) return;
-        
-        container.style.display = checkbox.checked ? 'block' : 'none';
-        
-        if (!checkbox.checked) {
-            input.value = '';
-            input.disabled = true;
-            this.updateStatusPillFromDeadline();
-        } else {
-            input.disabled = false;
-            if (!input.value) {
-                this.setDeadlineToday();
-            }
-        }
-    }
-    
-    /**
-     * Set deadline to today at 5pm
-     */
-    setDeadlineToday() {
-        const input = this.elements.deadlineInput;
-        if (!input) return;
-        
-        const today = new Date();
-        today.setHours(17, 0, 0, 0); // 5pm
-        const year = today.getFullYear();
-        const month = String(today.getMonth() + 1).padStart(2, '0');
-        const day = String(today.getDate()).padStart(2, '0');
-        const hours = String(today.getHours()).padStart(2, '0');
-        const minutes = String(today.getMinutes()).padStart(2, '0');
-        input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-        
-        this.updateStatusPillFromDeadline();
-    }
-    
-    /**
-     * Update status pill based on deadline
-     */
-    updateStatusPillFromDeadline() {
-        const input = this.elements.deadlineInput;
-        const pill = this.elements.statusPill;
-        const statusInput = this.elements.statusInput;
-        
-        if (!input || !pill || !statusInput) return;
-        
-        const deadlineValue = input.value;
-        if (deadlineValue) {
-            const deadline = new Date(deadlineValue);
-            const now = new Date();
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const deadlineDate = new Date(deadline);
-            deadlineDate.setHours(0, 0, 0, 0);
+            timeUnitRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    this.updateEstimatedTimeDisplay(e.target.value);
+                });
+            });
             
-            // Check if deadline is in the past (but not today)
-            if (deadline < now && deadlineDate.getTime() !== today.getTime()) {
-                pill.textContent = 'late';
-                pill.className = 'status-pill status-pill-late';
-                statusInput.value = 'late';
-            } else {
-                pill.textContent = 'open';
-                pill.className = 'status-pill status-pill-open';
-                if (statusInput.value === 'late') {
-                    statusInput.value = 'open';
+            // Log form time unit radio buttons and input
+            const logForm = this.elements.editMode?.querySelector('.task-log-form');
+            if (logForm) {
+                const logTimeInput = logForm.querySelector(`input[name="minutes"][id^="log-minutes-"]`);
+                const logTimeUnitRadios = logForm.querySelectorAll(`input[name="time_unit"][id^="log-time-unit-"]`);
+                
+                if (logTimeInput) {
+                    const originalMinutes = parseFloat(logTimeInput.dataset.originalMinutes) || 0;
+                    logTimeInput.dataset.storedMinutes = originalMinutes.toString();
+                    
+                    logTimeInput.addEventListener('input', () => {
+                        this.updateLogStoredMinutes(logTimeInput);
+                    });
                 }
+                
+                logTimeUnitRadios.forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        this.updateLogTimeDisplay(e.target.value, logTimeInput);
+                    });
+                });
             }
-        } else {
-            // No deadline, default to open
-            pill.textContent = 'open';
-            pill.className = 'status-pill status-pill-open';
-            if (statusInput.value === 'late') {
-                statusInput.value = 'open';
-            }
+        
         }
-    }
-    
-    /**
-     * Toggle recurring task dropdown
-     */
-    toggleRecurringTaskDropdown() {
-        const checkbox = this.elements.recurringCheckbox;
-        const container = this.elements.recurringContainer;
-        
-        if (!checkbox || !container) return;
-        
-        container.style.display = checkbox.checked ? 'block' : 'none';
-        
-        if (!checkbox.checked) {
-            const select = container.querySelector('select[name="recurring_task_id"]');
-            if (select) {
-                select.value = '';
-            }
-        }
-    }
     
     /**
      * Add a new universe row
@@ -416,20 +223,25 @@ class TaskCardEditor {
         const newRow = document.createElement('div');
         newRow.className = 'universe-item-row';
         newRow.setAttribute('data-index', this.universeIndex);
+        newRow.style.cssText = 'margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;';
         
+        // Build select options
         let optionsHtml = '<option value="">— select universe —</option>';
         for (const [id, name] of Object.entries(this.universeData)) {
             optionsHtml += `<option value="${id}">${name}</option>`;
         }
         
+        // Create select
         const select = document.createElement('select');
         select.name = 'universe_ids[]';
         select.className = 'universe-select';
         select.required = true;
+        select.style.cssText = 'padding: 0.35rem; flex: 1; max-width: 300px;';
         select.innerHTML = optionsHtml;
         
+        // Create label with radio
         const label = document.createElement('label');
-        label.className = 'task-edit-universe-label';
+        label.style.cssText = 'display: flex; align-items: center; gap: 0.25rem; margin: 0; white-space: nowrap;';
         
         const radio = document.createElement('input');
         radio.type = 'radio';
@@ -439,12 +251,15 @@ class TaskCardEditor {
         label.appendChild(radio);
         label.appendChild(document.createTextNode(' Primary'));
         
+        // Create remove button
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'remove-universe-btn';
         removeBtn.textContent = 'Remove';
         removeBtn.dataset.taskId = this.taskId;
+        removeBtn.style.cssText = 'padding: 0.35rem 0.75rem; font-size: 0.9rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;';
         
+        // Append all elements
         newRow.appendChild(select);
         newRow.appendChild(label);
         newRow.appendChild(removeBtn);
@@ -468,70 +283,739 @@ class TaskCardEditor {
     }
     
     /**
-     * Clear deadline if checkbox is unchecked
+     * Toggle recurring task dropdown visibility based on checkbox state
      */
-    clearDeadlineIfUnchecked() {
-        const checkbox = this.elements.deadlineCheckbox;
-        const input = this.elements.deadlineInput;
+    toggleRecurringTaskDropdown() {
+        const checkbox = this.elements.recurringCheckbox;
+        const container = this.elements.recurringContainer;
         
-        if (!checkbox || !input) return;
+        if (!checkbox || !container) return;
         
-        if (!checkbox.checked) {
-            input.value = '';
-            input.disabled = true;
+        // Remove/add d-none class (which uses !important)
+        if (checkbox.checked) {
+            container.classList.remove('d-none');
+            container.style.display = 'block';
         } else {
-            input.disabled = false;
+            container.classList.add('d-none');
+            container.style.display = 'none';
+            // Clear the selection if unchecked
+            const select = container.querySelector('select[name="recurring_task_id"]');
+            if (select) {
+                select.value = '';
+            }
         }
     }
     
     /**
-     * Initialize complete checkbox with delay
+     * Set deadline to today at 5pm
      */
-    initCompleteCheckbox() {
-        const checkbox = this.elements.completeCheckbox;
-        if (!checkbox || checkbox.dataset.initialized === 'true') return;
+    setDeadlineToday() {
+        const input = this.elements.deadlineInput;
+        if (!input) return;
         
-        checkbox.dataset.initialized = 'true';
+        const today = new Date();
+        today.setHours(17, 0, 0, 0); // 5pm
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const hours = String(today.getHours()).padStart(2, '0');
+        const minutes = String(today.getMinutes()).padStart(2, '0');
+        input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
         
-        checkbox.addEventListener('change', () => {
-            const taskId = checkbox.dataset.taskId;
-            const completeUrl = checkbox.dataset.completeUrl;
-            const isChecked = checkbox.checked;
-            const isCompleted = checkbox.dataset.isCompleted === 'true';
-            
-            // Clear any existing timeout
-            if (this.completeTimeout) {
-                clearTimeout(this.completeTimeout);
-                this.completeTimeout = null;
+        // Ensure the deadline checkbox is checked and container is visible
+        if (this.elements.deadlineCheckbox && !this.elements.deadlineCheckbox.checked) {
+            this.elements.deadlineCheckbox.checked = true;
+            this.toggleDeadlineInput();
+        }
+    }
+    
+    /**
+     * Updates the task card status class based on the deadline value.
+     * Status is "late" if deadline is in the past (not today), otherwise "open".
+     */
+    updateStatusPillFromDeadline() {
+        const deadlineCheckbox = this.elements.deadlineCheckbox;
+        const deadlineInput = this.elements.deadlineInput;
+
+        // If no deadline checkbox or it's unchecked, status is "open"
+        if (!deadlineCheckbox || !deadlineCheckbox.checked || !deadlineInput || !deadlineInput.value) {
+            this.setTaskStatus('open');
+            return;
+        }
+
+        // Parse the deadline value
+        const deadlineValue = deadlineInput.value;
+        if (!deadlineValue) {
+            this.setTaskStatus('open');
+            return;
+        }
+
+        // Parse datetime-local format (YYYY-MM-DDTHH:mm)
+        const deadline = new Date(deadlineValue);
+        const now = new Date();
+
+        // Compare dates (ignore time for "today" check)
+        const deadlineDate = new Date(deadline.getFullYear(), deadline.getMonth(), deadline.getDate());
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        // If deadline is before today, it's "late"
+        if (deadlineDate < today) {
+            this.setTaskStatus('late');
+        } else {
+            // If deadline is today or in the future, it's "open"
+            this.setTaskStatus('open');
+        }
+    }
+
+    /**
+     * Sets the task card status class.
+     * @param {string} status - The status to set ('open', 'late', 'completed', 'skipped')
+     */
+    setTaskStatus(status) {
+        const viewMode = this.elements.viewMode;
+        const taskItem = viewMode?.closest('.task-item');
+        
+        if (viewMode) {
+            // Remove all status classes from view mode
+            viewMode.classList.remove('task-status-open', 'task-status-late', 'task-status-skipped', 'task-status-completed');
+            // Add the specific status class
+            viewMode.classList.add(`task-status-${status}`);
+        }
+        
+        if (taskItem) {
+            // Also update the task-item class
+            taskItem.classList.remove('task-status-open', 'task-status-late', 'task-status-skipped', 'task-status-completed');
+            taskItem.classList.add(`task-status-${status}`);
+        }
+    }
+
+    /**
+     * Toggle deadline input visibility based on checkbox state
+     */
+    toggleDeadlineInput() {
+        const checkbox = this.elements.deadlineCheckbox;
+        const container = this.elements.deadlineContainer;
+        
+        if (!checkbox || !container) return;
+        
+        // Remove/add d-none class (which uses !important)
+        if (checkbox.checked) {
+            container.classList.remove('d-none');
+            container.style.display = 'block';
+        } else {
+            container.classList.add('d-none');
+            container.style.display = 'none';
+        }
+        
+        // If unchecked, clear and disable the deadline value
+        if (!checkbox.checked) {
+            const deadlineInput = container.querySelector('input[name="deadline_at"]');
+            if (deadlineInput) {
+                deadlineInput.value = '';
+                deadlineInput.disabled = true;
             }
-            
-            // Only handle completion if task is not already completed
-            if (!isCompleted && !checkbox.disabled && isChecked) {
-                // Set timeout for completion
-                this.completeTimeout = setTimeout(() => {
-                    // Check if checkbox is still checked
-                    if (checkbox.checked) {
-                        // Create form and submit
-                        const form = document.createElement('form');
-                        form.method = 'POST';
-                        form.action = completeUrl;
-                        
-                        const csrfToken = document.querySelector('meta[name="csrf-token"]');
-                        if (csrfToken) {
-                            const csrfInput = document.createElement('input');
-                            csrfInput.type = 'hidden';
-                            csrfInput.name = '_token';
-                            csrfInput.value = csrfToken.getAttribute('content');
-                            form.appendChild(csrfInput);
-                        }
-                        
-                        document.body.appendChild(form);
-                        form.submit();
-                    }
-                    this.completeTimeout = null;
-                }, this.options.completeDelay);
+        } else {
+            // If checked, enable the input
+            const deadlineInput = container.querySelector('input[name="deadline_at"]');
+            if (deadlineInput) {
+                deadlineInput.disabled = false;
             }
+        }
+    }
+    
+    toggleEditMode(showEdit) {
+        if (showEdit) {
+            if (this.elements.viewMode) this.elements.viewMode.style.display = 'none';
+            if (this.elements.editMode) {
+                this.elements.editMode.classList.remove('d-none');
+                this.elements.editMode.style.display = 'block';
+            }
+        } else {
+            if (this.elements.viewMode) this.elements.viewMode.style.display = 'block';
+            if (this.elements.editMode) {
+                this.elements.editMode.classList.add('d-none');
+                this.elements.editMode.style.display = 'none';
+            }
+        }
+    }
+    
+    clearDeadlineIfUnchecked() {
+        const checkbox = this.elements.deadlineCheckbox;
+        const container = this.elements.deadlineContainer;
+        
+        if (!checkbox || !container) return;
+        
+        if (!checkbox.checked) {
+            const deadlineInput = container.querySelector('input[name="deadline_at"]');
+            if (deadlineInput) {
+                deadlineInput.value = '';
+                deadlineInput.disabled = true;
+            }
+        } else {
+            const deadlineInput = container.querySelector('input[name="deadline_at"]');
+            if (deadlineInput) {
+                deadlineInput.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Update stored minutes value based on current input and selected unit
+     */
+    updateStoredMinutes() {
+        const input = document.getElementById(`estimated-time-${this.taskId}`);
+        if (!input || !input.value) return;
+        
+        const currentValue = parseFloat(input.value);
+        if (isNaN(currentValue)) return;
+        
+        const selectedUnit = document.querySelector(`input[name="time_unit"][id$="-${this.taskId}"]:checked`)?.value || 'minutes';
+        
+        let minutes;
+        if (selectedUnit === 'hours') {
+            minutes = currentValue * 60; // Convert hours to minutes
+        } else {
+            minutes = currentValue;
+        }
+        
+        input.dataset.storedMinutes = Math.round(minutes).toString();
+    }
+    
+    /**
+     * Update stored minutes value for log form based on current input and selected unit
+     */
+    updateLogStoredMinutes(input) {
+        if (!input || !input.value) return;
+        
+        const currentValue = parseFloat(input.value);
+        if (isNaN(currentValue)) return;
+        
+        const form = input.closest('form');
+        const selectedUnit = form?.querySelector('input[name="time_unit"]:checked')?.value || 'hours';
+        
+        let minutes;
+        if (selectedUnit === 'hours') {
+            minutes = currentValue * 60;
+        } else {
+            minutes = currentValue;
+        }
+        
+        input.dataset.storedMinutes = Math.round(minutes).toString();
+    }
+    
+    /**
+     * Update log time display when unit changes
+     */
+    updateLogTimeDisplay(newUnit, input) {
+        if (!input) return;
+        
+        this.updateLogStoredMinutes(input);
+        
+        const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
+        
+        if (!storedMinutes) {
+            input.step = newUnit === 'hours' ? '0.25' : '1';
+            return;
+        }
+        
+        if (newUnit === 'hours') {
+            const hours = storedMinutes / 60;
+            input.value = parseFloat(hours.toFixed(2));
+            input.step = '0.25';
+        } else {
+            input.value = Math.round(storedMinutes);
+            input.step = '1';
+        }
+    }
+    
+    /**
+     * Update estimated time display when unit changes
+     */
+    updateEstimatedTimeDisplay(newUnit) {
+        const input = document.getElementById(`estimated-time-${this.taskId}`);
+        if (!input) return;
+        
+        // First, update stored minutes from current value (before unit change)
+        this.updateStoredMinutes();
+        
+        // Get stored minutes value
+        const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
+        
+        if (!storedMinutes) {
+            // If no value, just update step attribute
+            input.step = newUnit === 'hours' ? '0.25' : '1';
+            return;
+        }
+        
+        // Convert stored minutes to new unit for display
+        if (newUnit === 'hours') {
+            const hours = storedMinutes / 60;
+            // Show up to 2 decimal places
+            input.value = parseFloat(hours.toFixed(2));
+            input.step = '0.25';
+        } else {
+            input.value = Math.round(storedMinutes);
+            input.step = '1';
+        }
+    }
+    
+    async handleFormSubmit(e) {
+        e.preventDefault();
+        
+        // Clear deadline if checkbox is unchecked
+        this.clearDeadlineIfUnchecked();
+        
+        const form = this.elements.editForm;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn ? submitBtn.textContent : 'Save';
+        
+        // Ensure _method is set
+        if (!formData.has('_method')) {
+            formData.append('_method', 'PUT');
+        }
+        
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+        }
+        
+        console.log('Submitting form:', {
+            action: form.action,
+            method: form.method,
+            taskId: this.taskId,
+            _method: formData.get('_method'),
+            hasToken: formData.has('_token')
         });
+        
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': formData.get('_token'),
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+            
+            // Check for redirect
+            if (response.redirected) {
+                console.error('Server returned redirect instead of JSON!');
+                alert('Task may have been saved, but server returned HTML instead of JSON. Reload page to see changes?');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+                return;
+            }
+            
+            // Parse JSON
+            const data = await response.json();
+            
+            if (!response.ok) {
+                let errorMessage = 'Error updating task';
+                if (data.errors) {
+                    errorMessage = Object.values(data.errors).flat().join('\n');
+                } else if (data.message) {
+                    errorMessage = data.message;
+                }
+                alert('Error: ' + errorMessage);
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+                return;
+            }
+            
+            if (data.success) {
+                console.log('Task updated successfully! Reloading...');
+                alert('Task updated successfully! Reloading...');
+                window.location.reload();
+            } else {
+                alert('Error updating task');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+            alert('Error: ' + (error.message || 'Error updating task'));
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+    }
+
+    /**
+     * Handles the complete checkbox change with delay.
+     * @param {Event} e - The change event.
+     */
+    handleCompleteCheckbox(e) {
+        const checkbox = e.target;
+        const isChecked = checkbox.checked;
+        
+        // Clear any existing timeout
+        if (this.completeTimeout) {
+            clearTimeout(this.completeTimeout);
+            this.completeTimeout = null;
+        }
+        
+        // If checked, set a delay before completing
+        if (isChecked) {
+            // Disable checkbox during delay
+            checkbox.disabled = true;
+            
+            // Set timeout (2 seconds delay)
+            this.completeTimeout = setTimeout(() => {
+                this.completeTask();
+            }, 2000);
+        } else {
+            // If unchecked, we could handle uncompleting, but for now just clear timeout
+            // Uncompleting would require a different endpoint
+        }
+    }
+
+    /**
+     * Completes the task via AJAX.
+     */
+    async completeTask() {
+        const checkbox = this.elements.completeCheckbox;
+        if (!checkbox) return;
+        
+        try {
+            const response = await fetch(`/tasks/${this.taskId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                alert('Error: ' + (data.message || 'Failed to complete task'));
+                checkbox.checked = false;
+                checkbox.disabled = false;
+                return;
+            }
+            
+            const data = await response.json();
+            if (data.success) {
+                // Reload page to reflect changes
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Unknown error'));
+                checkbox.checked = false;
+                checkbox.disabled = false;
+            }
+        } catch (error) {
+            console.error('Complete error:', error);
+            alert('Error: ' + error.message);
+            checkbox.checked = false;
+            checkbox.disabled = false;
+        }
+    }
+
+    /**
+     * Handles the delete task button click.
+     * @param {Event} e - The click event.
+     */
+    async handleDeleteTask(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const deleteBtn = this.elements.deleteBtn;
+        if (!deleteBtn) return;
+
+        if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/tasks/${this.taskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                alert('Error: ' + (data.message || 'Failed to delete task'));
+                return;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                // Reload page to reflect changes
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+
+    /**
+     * Handles the skip task button click.
+     * @param {Event} e - The click event.
+     */
+    async handleSkipTask(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const skipBtn = this.elements.skipBtn;
+        if (!skipBtn) return;
+
+        if (!confirm('Skip this task instance? The next recurring instance will be created.')) {
+            return;
+        }
+
+        const originalText = skipBtn.textContent;
+        skipBtn.disabled = true;
+        skipBtn.textContent = 'Skipping...';
+
+        try {
+            const response = await fetch(`/tasks/${this.taskId}/skip`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                alert('Error: ' + (data.message || 'Failed to skip task'));
+                skipBtn.disabled = false;
+                skipBtn.textContent = originalText;
+                return;
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                // Reload page to reflect changes
+                window.location.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Unknown error'));
+                skipBtn.disabled = false;
+                skipBtn.textContent = originalText;
+            }
+        } catch (error) {
+            console.error('Skip error:', error);
+            alert('Error: ' + error.message);
+            skipBtn.disabled = false;
+            skipBtn.textContent = originalText;
+        }
+    }
+
+    /**
+     * Handles the complete and log button click.
+     * @param {Event} e - The click event.
+     */
+    async handleCompleteAndLog(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const btn = this.elements.completeAndLogBtn;
+        if (!btn) return;
+
+        // Get the log form
+        const logForm = this.elements.editMode?.querySelector('.task-log-form');
+        if (!logForm) {
+            alert('Error: Log form not found');
+            return;
+        }
+
+        const formData = new FormData(logForm);
+        const minutes = formData.get('minutes');
+        const notes = formData.get('notes');
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Completing...';
+
+        try {
+            // First, log the task
+            const logResponse = await fetch(logForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': formData.get('_token'),
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+
+            if (!logResponse.ok) {
+                const logData = await logResponse.json().catch(() => ({}));
+                alert('Error logging task: ' + (logData.message || 'Failed to log task'));
+                btn.disabled = false;
+                btn.textContent = originalText;
+                return;
+            }
+
+            // Then, complete the task
+            const completeResponse = await fetch(`/tasks/${this.taskId}/complete`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!completeResponse.ok) {
+                const completeData = await completeResponse.json().catch(() => ({}));
+                alert('Error completing task: ' + (completeData.message || 'Failed to complete task'));
+                btn.disabled = false;
+                btn.textContent = originalText;
+                return;
+            }
+
+            const completeData = await completeResponse.json();
+            if (completeData.success) {
+                // Clear the log form
+                logForm.reset();
+                // Reload page to reflect changes
+                window.location.reload();
+            } else {
+                alert('Error: ' + (completeData.message || 'Unknown error'));
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        } catch (error) {
+            console.error('Complete and log error:', error);
+            alert('Error: ' + error.message);
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    }
+
+    /**
+     * Handles the log form submission.
+     * @param {Event} e - The submit event.
+     */
+    async handleLogSubmit(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent event bubbling
+        
+        // Prevent double submission
+        if (this.logSubmitting) {
+            return;
+        }
+        this.logSubmitting = true;
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn ? submitBtn.textContent : 'Log';
+        
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging...';
+        }
+        
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': formData.get('_token'),
+                    'Accept': 'application/json'
+                },
+                body: formData
+            });
+            
+            // Check for redirect
+            if (response.redirected) {
+                console.error('Server returned redirect instead of JSON!');
+                alert('Error: Server returned HTML instead of JSON. The log may have been saved. Please refresh the page.');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+                return;
+            }
+            
+            // Try to parse as JSON
+            let data;
+            try {
+                const text = await response.text();
+                if (text) {
+                    data = JSON.parse(text);
+                } else {
+                    data = {};
+                }
+            } catch (parseError) {
+                console.error('Failed to parse response as JSON:', parseError);
+                const contentType = response.headers.get('Content-Type') || '';
+                if (!contentType.includes('application/json')) {
+                    console.error('Response is not JSON! Content-Type:', contentType);
+                    alert('Error: Server returned HTML instead of JSON. The log may have been saved. Please refresh the page.');
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                    return;
+                }
+                throw parseError;
+            }
+            
+            if (!response.ok) {
+                let errorMessage = 'Error logging task';
+                if (response.status === 422 && data.errors) {
+                    errorMessage = Object.values(data.errors).flat().join('\n');
+                } else if (data.message) {
+                    errorMessage = data.message;
+                }
+                alert('Error: ' + errorMessage);
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+                return;
+            }
+            
+            if (data.success) {
+                // Clear the form
+                form.reset();
+                // Reset button state
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+                // Reset submission flag
+                this.logSubmitting = false;
+                alert('Task logged successfully!');
+            } else {
+                alert('Error: ' + (data.message || 'Unknown error'));
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+                // Reset submission flag
+                this.logSubmitting = false;
+            }
+        } catch (error) {
+            console.error('Log error:', error);
+            alert('Error: ' + error.message);
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+            // Reset submission flag
+            this.logSubmitting = false;
+        }
     }
 }
 
@@ -541,24 +1025,18 @@ document.addEventListener('DOMContentLoaded', function() {
         window.taskCardEditors = {};
     }
     
-    // Collect all unique task IDs from both forms and edit buttons
-    const taskIds = new Set();
-    
     // Find all task edit forms
-    document.querySelectorAll('.task-edit-form[data-task-id]').forEach(form => {
+    document.querySelectorAll('.task-edit-form-simple[data-task-id]').forEach(form => {
         const taskId = parseInt(form.dataset.taskId);
-        if (taskId) taskIds.add(taskId);
+        if (taskId && !window.taskCardEditors[taskId]) {
+            window.taskCardEditors[taskId] = new TaskCardEditor(taskId);
+        }
     });
     
-    // Find all edit buttons (for tasks that might only have view mode initially)
-    document.querySelectorAll('.edit-task-btn[data-task-id]').forEach(btn => {
-        const taskId = parseInt(btn.dataset.taskId);
-        if (taskId) taskIds.add(taskId);
-    });
-    
-    // Initialize editor for each unique task ID
-    taskIds.forEach(taskId => {
-        if (!window.taskCardEditors[taskId]) {
+    // Also initialize for tasks with clickable task names
+    document.querySelectorAll('.task-name-clickable[data-task-id]').forEach(taskName => {
+        const taskId = parseInt(taskName.dataset.taskId);
+        if (taskId && !window.taskCardEditors[taskId]) {
             window.taskCardEditors[taskId] = new TaskCardEditor(taskId);
         }
     });

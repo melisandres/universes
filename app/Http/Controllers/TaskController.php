@@ -43,7 +43,8 @@ class TaskController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'estimated_time' => 'nullable|integer|min:0',
+            'estimated_time' => 'nullable|numeric|min:0',
+            'time_unit' => 'nullable|string|in:minutes,hours',
             'description' => 'nullable|string',
             'universe_ids' => 'required|array|min:1',
             'universe_ids.*' => 'required|exists:universes,id',
@@ -59,6 +60,19 @@ class TaskController extends Controller
         } else {
             $validated['deadline_at'] = null;
         }
+        
+        // Convert estimated_time to minutes if provided
+        if (isset($validated['estimated_time']) && $validated['estimated_time'] !== null) {
+            $timeUnit = $validated['time_unit'] ?? 'minutes'; // Default to minutes if not specified
+            if ($timeUnit === 'hours') {
+                $validated['estimated_time'] = (int) round($validated['estimated_time'] * 60);
+            } else {
+                $validated['estimated_time'] = (int) round($validated['estimated_time']);
+            }
+        } else {
+            $validated['estimated_time'] = null;
+        }
+        unset($validated['time_unit']); // Remove time_unit as it's not a database field
     
         $universeIds = $validated['universe_ids'];
         $primaryIndex = (int) $validated['primary_universe'];
@@ -157,7 +171,8 @@ class TaskController extends Controller
         try {
             $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'estimated_time' => 'nullable|integer|min:0',
+            'estimated_time' => 'nullable|numeric|min:0',
+            'time_unit' => 'nullable|string|in:minutes,hours',
             'description' => 'nullable|string',
             'universe_ids' => 'required|array|min:1',
             'universe_ids.*' => 'required|exists:universes,id',
@@ -173,6 +188,19 @@ class TaskController extends Controller
         } else {
             $validated['deadline_at'] = null;
         }
+        
+        // Convert estimated_time to minutes if provided
+        if (isset($validated['estimated_time']) && $validated['estimated_time'] !== null) {
+            $timeUnit = $validated['time_unit'] ?? 'minutes'; // Default to minutes if not specified
+            if ($timeUnit === 'hours') {
+                $validated['estimated_time'] = (int) round($validated['estimated_time'] * 60);
+            } else {
+                $validated['estimated_time'] = (int) round($validated['estimated_time']);
+            }
+        } else {
+            $validated['estimated_time'] = null;
+        }
+        unset($validated['time_unit']); // Remove time_unit as it's not a database field
         
         $universeIds = array_values($validated['universe_ids']); // Re-index array to ensure sequential indices
         $primaryIndex = (int) $validated['primary_universe'];
@@ -414,14 +442,26 @@ class TaskController extends Controller
     {
         try {
             $validated = $request->validate([
-                'minutes' => 'nullable|integer|min:0',
+                'minutes' => 'nullable|numeric|min:0',
+                'time_unit' => 'nullable|string|in:minutes,hours',
                 'notes' => 'nullable|string',
             ]);
+
+            // Convert minutes to minutes if provided
+            $minutes = null;
+            if (isset($validated['minutes']) && $validated['minutes'] !== null) {
+                $timeUnit = $validated['time_unit'] ?? 'hours'; // Default to hours
+                if ($timeUnit === 'hours') {
+                    $minutes = (int) round($validated['minutes'] * 60);
+                } else {
+                    $minutes = (int) round($validated['minutes']);
+                }
+            }
 
             \App\Models\Log::create([
                 'loggable_type' => 'App\Models\Task',
                 'loggable_id' => $task->id,
-                'minutes' => $validated['minutes'] ?? null,
+                'minutes' => $minutes,
                 'notes' => $validated['notes'] ?? null,
             ]);
 

@@ -57,8 +57,27 @@
         <input type="hidden" name="loggable_type" id="loggable-type-input" value="App\Models\Task">
         <input type="hidden" name="loggable_id" id="loggable-id-input" value="">
 
-        <label>Minutes</label><br>
-        <input type="number" name="minutes" min="0" value=""><br><br>
+        <label>Time:</label><br>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            <input type="number" 
+                   name="minutes" 
+                   id="log-minutes-create"
+                   data-original-minutes="0"
+                   min="0" 
+                   step="0.25"
+                   value=""
+                   style="flex: 1; min-width: 100px;">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                    <input type="radio" name="time_unit" value="minutes" id="log-time-unit-minutes-create">
+                    <span>Minutes</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                    <input type="radio" name="time_unit" value="hours" id="log-time-unit-hours-create" checked>
+                    <span>Hours</span>
+                </label>
+            </div>
+        </div>
 
         <label>Notes</label><br>
         <textarea name="notes"></textarea><br><br>
@@ -193,8 +212,40 @@
                                 <input type="hidden" name="loggable_type" class="loggable-type-input-edit" value="{{ $log->loggable_type ?? 'App\Models\Task' }}">
                                 <input type="hidden" name="loggable_id" class="loggable-id-input-edit" value="{{ $log->loggable_id ?? '' }}"><br><br>
 
-                                <label>Minutes</label><br>
-                                <input type="number" name="minutes" min="0" value="{{ $log->minutes }}"><br><br>
+                                @php
+                                    $logDisplayTime = null;
+                                    $logDefaultStep = '0.25'; // Default to hours
+                                    if ($log->minutes) {
+                                        if ($log->minutes >= 60) {
+                                            $logDisplayTime = round($log->minutes / 60, 2);
+                                            $logDefaultStep = '0.25';
+                                        } else {
+                                            $logDisplayTime = $log->minutes;
+                                            $logDefaultStep = '1';
+                                        }
+                                    }
+                                @endphp
+                                <label>Time:</label><br>
+                                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                                    <input type="number" 
+                                           name="minutes" 
+                                           id="log-minutes-edit-{{ $log->id }}"
+                                           data-original-minutes="{{ $log->minutes ?? 0 }}"
+                                           min="0" 
+                                           step="{{ $logDefaultStep }}"
+                                           value="{{ $logDisplayTime }}"
+                                           style="flex: 1; min-width: 100px;">
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                                            <input type="radio" name="time_unit" value="minutes" id="log-time-unit-minutes-edit-{{ $log->id }}" @if($log->minutes && $log->minutes < 60) checked @endif>
+                                            <span>Minutes</span>
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                                            <input type="radio" name="time_unit" value="hours" id="log-time-unit-hours-edit-{{ $log->id }}" @if(!$log->minutes || $log->minutes >= 60) checked @endif>
+                                            <span>Hours</span>
+                                        </label>
+                                    </div>
+                                </div>
 
                                 <label>Notes</label><br>
                                 <textarea name="notes">{{ $log->notes }}</textarea><br><br>
@@ -370,6 +421,81 @@ document.addEventListener('DOMContentLoaded', function() {
             
             viewMode.style.display = 'block';
             editMode.style.display = 'none';
+        });
+    });
+    
+    // Time unit conversion for log forms
+    function updateLogStoredMinutes(input) {
+        if (!input || !input.value) return;
+        
+        const currentValue = parseFloat(input.value);
+        if (isNaN(currentValue)) return;
+        
+        const form = input.closest('form');
+        const selectedUnit = form?.querySelector('input[name="time_unit"]:checked')?.value || 'hours';
+        
+        let minutes;
+        if (selectedUnit === 'hours') {
+            minutes = currentValue * 60;
+        } else {
+            minutes = currentValue;
+        }
+        
+        input.dataset.storedMinutes = Math.round(minutes).toString();
+    }
+    
+    function updateLogTimeDisplay(newUnit, input) {
+        if (!input) return;
+        
+        updateLogStoredMinutes(input);
+        
+        const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
+        
+        if (!storedMinutes) {
+            input.step = newUnit === 'hours' ? '0.25' : '1';
+            return;
+        }
+        
+        if (newUnit === 'hours') {
+            const hours = storedMinutes / 60;
+            input.value = parseFloat(hours.toFixed(2));
+            input.step = '0.25';
+        } else {
+            input.value = Math.round(storedMinutes);
+            input.step = '1';
+        }
+    }
+    
+    // Initialize time unit conversion for create log form
+    const createLogMinutesInput = document.getElementById('log-minutes-create');
+    const createLogTimeUnitRadios = document.querySelectorAll('input[name="time_unit"][id^="log-time-unit-"]');
+    
+    if (createLogMinutesInput) {
+        createLogMinutesInput.dataset.storedMinutes = '0';
+        createLogMinutesInput.addEventListener('input', () => updateLogStoredMinutes(createLogMinutesInput));
+    }
+    
+    createLogTimeUnitRadios.forEach(radio => {
+        if (radio.id.includes('create')) {
+            radio.addEventListener('change', (e) => {
+                updateLogTimeDisplay(e.target.value, createLogMinutesInput);
+            });
+        }
+    });
+    
+    // Initialize time unit conversion for edit log forms
+    document.querySelectorAll('input[name="minutes"][id^="log-minutes-edit-"]').forEach(input => {
+        const logId = input.id.replace('log-minutes-edit-', '');
+        const originalMinutes = parseFloat(input.dataset.originalMinutes) || 0;
+        input.dataset.storedMinutes = originalMinutes.toString();
+        
+        input.addEventListener('input', () => updateLogStoredMinutes(input));
+        
+        const editRadios = document.querySelectorAll(`input[name="time_unit"][id^="log-time-unit-"][id$="-${logId}"]`);
+        editRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                updateLogTimeDisplay(e.target.value, input);
+            });
         });
     });
 });

@@ -37,8 +37,41 @@
 
     {{-- Estimated Time --}}
     <div style="margin-bottom: 1rem;">
-        <label>Estimated Time (minutes)</label><br>
-        <input type="number" name="estimated_time" value="{{ $task->estimated_time }}" min="0" placeholder="Optional" style="max-width: 500px;">
+        <label>Estimated Time:</label><br>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+            @php
+                $displayTime = null;
+                $defaultStep = '0.25'; // Default to hours
+                if ($task->estimated_time) {
+                    if ($task->estimated_time >= 60) {
+                        $displayTime = round($task->estimated_time / 60, 2);
+                        $defaultStep = '0.25';
+                    } else {
+                        $displayTime = $task->estimated_time;
+                        $defaultStep = '1';
+                    }
+                }
+            @endphp
+            <input type="number" 
+                   name="estimated_time" 
+                   id="estimated-time-edit"
+                   value="{{ $displayTime }}" 
+                   data-original-minutes="{{ $task->estimated_time ?? 0 }}"
+                   min="0" 
+                   step="{{ $defaultStep }}"
+                   placeholder="Optional" 
+                   style="max-width: 500px; flex: 1; min-width: 100px;">
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                    <input type="radio" name="time_unit" value="minutes" id="time-unit-minutes-edit" @if($task->estimated_time && $task->estimated_time < 60) checked @endif>
+                    <span>Minutes</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                    <input type="radio" name="time_unit" value="hours" id="time-unit-hours-edit" @if(!$task->estimated_time || $task->estimated_time >= 60) checked @endif>
+                    <span>Hours</span>
+                </label>
+            </div>
+        </div>
     </div>
 
     {{-- Description --}}
@@ -243,6 +276,68 @@ function updateStatusPillFromDeadlineEdit() {
         }
     }
 }
+
+// Time unit conversion for edit page
+function updateStoredMinutesEdit() {
+    const input = document.getElementById('estimated-time-edit');
+    if (!input || !input.value) return;
+    
+    const currentValue = parseFloat(input.value);
+    if (isNaN(currentValue)) return;
+    
+    const selectedUnit = document.querySelector('input[name="time_unit"]:checked')?.value || 'minutes';
+    
+    let minutes;
+    if (selectedUnit === 'hours') {
+        minutes = currentValue * 60;
+    } else {
+        minutes = currentValue;
+    }
+    
+    input.dataset.storedMinutes = Math.round(minutes).toString();
+}
+
+function updateEstimatedTimeDisplayEdit(newUnit) {
+    const input = document.getElementById('estimated-time-edit');
+    if (!input) return;
+    
+    updateStoredMinutesEdit();
+    
+    const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
+    
+    if (!storedMinutes) {
+        input.step = newUnit === 'hours' ? '0.25' : '1';
+        return;
+    }
+    
+    if (newUnit === 'hours') {
+        const hours = storedMinutes / 60;
+        input.value = parseFloat(hours.toFixed(2));
+        input.step = '0.25';
+    } else {
+        input.value = Math.round(storedMinutes);
+        input.step = '1';
+    }
+}
+
+// Initialize time unit conversion
+document.addEventListener('DOMContentLoaded', function() {
+    const timeInput = document.getElementById('estimated-time-edit');
+    const timeUnitRadios = document.querySelectorAll('input[name="time_unit"]');
+    
+    if (timeInput) {
+        const originalMinutes = parseFloat(timeInput.dataset.originalMinutes) || 0;
+        timeInput.dataset.storedMinutes = originalMinutes.toString();
+        
+        timeInput.addEventListener('input', updateStoredMinutesEdit);
+    }
+    
+    timeUnitRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateEstimatedTimeDisplayEdit(e.target.value);
+        });
+    });
+});
 </script>
 @endpush
 @endsection

@@ -80,7 +80,7 @@
     <ul class="tasks-list">
         {{-- Primary tasks --}}
         @foreach ($primaryTasks as $task)
-            @include('tasks._task_card_test', [
+            @include('tasks._task_card', [
                 'task' => $task,
                 'inlineEdit' => true,
                 'currentUniverse' => $universe,

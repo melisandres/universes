@@ -21,7 +21,7 @@
     
     @yield('content')
     
-    <script src="{{ asset('js/TaskCardEditorTest.js') }}"></script>
+    <script src="{{ asset('js/TaskCardEditor.js') }}"></script>
     @stack('scripts')
 </body>
 </html>

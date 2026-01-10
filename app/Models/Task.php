@@ -106,4 +106,33 @@ class Task extends Model
         }
         return $this->status ?: 'open';
     }
+
+    /**
+     * Format estimated time for display
+     * Returns formatted string like "2h 30m" or "45m" or "1.5h"
+     */
+    public function getFormattedEstimatedTime(): ?string
+    {
+        if ($this->estimated_time === null) {
+            return null;
+        }
+
+        $minutes = $this->estimated_time;
+        
+        // If less than 60 minutes, show as minutes
+        if ($minutes < 60) {
+            return "{$minutes}m";
+        }
+        
+        // If divisible by 60, show as hours
+        if ($minutes % 60 === 0) {
+            $hours = $minutes / 60;
+            return "{$hours}h";
+        }
+        
+        // Otherwise show as hours and minutes
+        $hours = floor($minutes / 60);
+        $remainingMinutes = $minutes % 60;
+        return "{$hours}h {$remainingMinutes}m";
+    }
 }

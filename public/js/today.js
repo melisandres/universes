@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 taskDetailPanel.style.display = 'block';
                 // Re-attach event listeners for forms in the detail panel
                 attachTaskActionListeners();
+                // Initialize time unit conversion for log forms
+                initializeLogTimeConversion();
             })
             .catch(() => {
                 // Fallback: show basic info
@@ -366,5 +368,65 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    
+    // Time unit conversion for log forms
+    function updateLogStoredMinutes(input) {
+        if (!input || !input.value) return;
+        
+        const currentValue = parseFloat(input.value);
+        if (isNaN(currentValue)) return;
+        
+        const form = input.closest('form');
+        const selectedUnit = form?.querySelector('input[name="time_unit"]:checked')?.value || 'hours';
+        
+        let minutes;
+        if (selectedUnit === 'hours') {
+            minutes = currentValue * 60;
+        } else {
+            minutes = currentValue;
+        }
+        
+        input.dataset.storedMinutes = Math.round(minutes).toString();
+    }
+    
+    function updateLogTimeDisplay(newUnit, input) {
+        if (!input) return;
+        
+        updateLogStoredMinutes(input);
+        
+        const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
+        
+        if (!storedMinutes) {
+            input.step = newUnit === 'hours' ? '0.25' : '1';
+            return;
+        }
+        
+        if (newUnit === 'hours') {
+            const hours = storedMinutes / 60;
+            input.value = parseFloat(hours.toFixed(2));
+            input.step = '0.25';
+        } else {
+            input.value = Math.round(storedMinutes);
+            input.step = '1';
+        }
+    }
+    
+    function initializeLogTimeConversion() {
+        // Find all log forms in task detail panel
+        document.querySelectorAll('#task-detail-panel input[name="minutes"][id^="log-minutes-detail-"]').forEach(input => {
+            const taskId = input.id.replace('log-minutes-detail-', '');
+            const originalMinutes = parseFloat(input.dataset.originalMinutes) || 0;
+            input.dataset.storedMinutes = originalMinutes.toString();
+            
+            input.addEventListener('input', () => updateLogStoredMinutes(input));
+            
+            const radios = document.querySelectorAll(`#task-detail-panel input[name="time_unit"][id^="log-time-unit-"][id$="-${taskId}"]`);
+            radios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    updateLogTimeDisplay(e.target.value, input);
+                });
+            });
+        });
+    }
 });
 

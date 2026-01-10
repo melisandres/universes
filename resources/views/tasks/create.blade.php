@@ -32,8 +32,27 @@
     <label>Name</label><br>
     <input type="text" name="name" required><br><br>
 
-    <label>Estimated Time (minutes)</label><br>
-    <input type="number" name="estimated_time" min="0" placeholder="Optional"><br><br>
+    <label>Estimated Time:</label><br>
+    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+        <input type="number" 
+               name="estimated_time" 
+               id="estimated-time-create"
+               data-original-minutes="0"
+               min="0" 
+               step="0.25"
+               placeholder="Optional" 
+               style="max-width: 500px; flex: 1; min-width: 100px;">
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                <input type="radio" name="time_unit" value="minutes" id="time-unit-minutes-create">
+                <span>Minutes</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer;">
+                <input type="radio" name="time_unit" value="hours" id="time-unit-hours-create" checked>
+                <span>Hours</span>
+            </label>
+        </div>
+    </div>
 
     <label>Description</label><br>
     <textarea name="description" rows="4" placeholder="Optional"></textarea><br><br>
@@ -99,6 +118,66 @@ function removeUniverseRow(btn) {
         alert('At least one universe is required');
     }
 }
+
+// Time unit conversion for create page
+function updateStoredMinutesCreate() {
+    const input = document.getElementById('estimated-time-create');
+    if (!input || !input.value) return;
+    
+    const currentValue = parseFloat(input.value);
+    if (isNaN(currentValue)) return;
+    
+    const selectedUnit = document.querySelector('input[name="time_unit"]:checked')?.value || 'minutes';
+    
+    let minutes;
+    if (selectedUnit === 'hours') {
+        minutes = currentValue * 60;
+    } else {
+        minutes = currentValue;
+    }
+    
+    input.dataset.storedMinutes = Math.round(minutes).toString();
+}
+
+function updateEstimatedTimeDisplayCreate(newUnit) {
+    const input = document.getElementById('estimated-time-create');
+    if (!input) return;
+    
+    updateStoredMinutesCreate();
+    
+    const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
+    
+    if (!storedMinutes) {
+        input.step = newUnit === 'hours' ? '0.25' : '1';
+        return;
+    }
+    
+    if (newUnit === 'hours') {
+        const hours = storedMinutes / 60;
+        input.value = parseFloat(hours.toFixed(2));
+        input.step = '0.25';
+    } else {
+        input.value = Math.round(storedMinutes);
+        input.step = '1';
+    }
+}
+
+// Initialize time unit conversion
+document.addEventListener('DOMContentLoaded', function() {
+    const timeInput = document.getElementById('estimated-time-create');
+    const timeUnitRadios = document.querySelectorAll('input[name="time_unit"]');
+    
+    if (timeInput) {
+        timeInput.dataset.storedMinutes = '0';
+        timeInput.addEventListener('input', updateStoredMinutesCreate);
+    }
+    
+    timeUnitRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            updateEstimatedTimeDisplayCreate(e.target.value);
+        });
+    });
+});
 </script>
 @endpush
 @endsection
