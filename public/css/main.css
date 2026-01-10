@@ -1066,3 +1066,122 @@ a[href*="add"]:hover {
 .mb-1 { margin-bottom: 0.5rem; }
 .mb-2 { margin-bottom: 1rem; }
 
+
+/* ============================================
+   Inline Editable Fields
+   ============================================ */
+
+.inline-editable-field {
+    margin-bottom: 0.75rem;
+}
+
+.inline-field-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #333;
+}
+
+.inline-field-view {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    min-height: 2rem;
+}
+
+.inline-field-value {
+    flex: 1;
+    color: #333;
+    font-size: 0.95em;
+}
+
+.inline-field-value:empty::before {
+    content: attr(data-placeholder);
+    color: #999;
+    font-style: italic;
+}
+
+.inline-field-edit-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0.6;
+}
+
+.inline-field-edit-btn:hover {
+    opacity: 1;
+    color: #007bff;
+    background-color: #f0f0f0;
+}
+
+.inline-field-edit-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+.inline-field-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.inline-field-input {
+    padding: 0.35rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.95em;
+    width: 100%;
+    max-width: 300px;
+    transition: border-color 0.2s;
+}
+
+.inline-field-input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.inline-field-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.inline-field-save-btn,
+.inline-field-cancel-btn {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    transition: all 0.2s;
+}
+
+.inline-field-save-btn {
+    background-color: #28a745;
+    color: white;
+    border-color: #28a745;
+}
+
+.inline-field-save-btn:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.inline-field-cancel-btn {
+    background-color: #fff;
+    color: #6c757d;
+}
+
+.inline-field-cancel-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+}

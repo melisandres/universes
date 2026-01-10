@@ -38,66 +38,43 @@
                         @method('PUT')
                 
                 {{-- Name --}}
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em; font-weight: 600;">Name:</label>
-                    <input type="text" name="name" value="{{ $task->name }}" required style="width: 100%; max-width: 300px; padding: 0.35rem;">
-                </div>
+                <x-inline-editable-field
+                    field-id="task-name-{{ $task->id }}"
+                    label="Name"
+                    value="{{ $task->name }}"
+                    name="name"
+                    type="text"
+                    required
+                />
+                
+                {{-- Universes Selection --}}
+                @php
+                    $universesForInclude = $universes ?? \App\Models\Universe::orderBy('name')->get();
+                @endphp
+                @include('tasks._inline_universes', [
+                    'task' => $task,
+                    'universeItems' => $universeItems,
+                    'universes' => $universesForInclude,
+                    'currentUniverse' => $currentUniverse ?? null,
+                    'fieldId' => 'universes-' . $task->id
+                ])
                 
                 {{-- Estimated Time --}}
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em;">Estimated Time:</label>
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        @php
-                            $displayTime = null;
-                            $defaultStep = '0.25'; // Default to hours
-                            $defaultUnit = 'hours'; // Default to hours
-                            if ($task->estimated_time) {
-                                if ($task->estimated_time >= 60) {
-                                    $displayTime = round($task->estimated_time / 60, 2);
-                                    $defaultStep = '0.25';
-                                    $defaultUnit = 'hours';
-                                } else {
-                                    $displayTime = $task->estimated_time;
-                                    $defaultStep = '1';
-                                    $defaultUnit = 'minutes';
-                                }
-                            }
-                        @endphp
-                        <input type="number" 
-                               name="estimated_time" 
-                               id="estimated-time-{{ $task->id }}"
-                               value="{{ $displayTime }}" 
-                               data-original-minutes="{{ $task->estimated_time ?? 0 }}"
-                               min="0" 
-                               step="{{ $defaultStep }}"
-                               placeholder="Optional" 
-                               style="padding: 0.35rem; flex: 1; min-width: 100px; max-width: 300px;">
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
-                            <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer; font-size: 0.9em;">
-                                <input type="radio" 
-                                       name="time_unit" 
-                                       value="minutes" 
-                                       id="time-unit-minutes-{{ $task->id }}"
-                                       @if($task->estimated_time && $task->estimated_time < 60) checked @endif>
-                                <span>Minutes</span>
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer; font-size: 0.9em;">
-                                <input type="radio" 
-                                       name="time_unit" 
-                                       value="hours" 
-                                       id="time-unit-hours-{{ $task->id }}"
-                                       @if(!$task->estimated_time || $task->estimated_time >= 60) checked @endif>
-                                <span>Hours</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                @include('tasks._inline_estimated_time', [
+                    'task' => $task,
+                    'fieldId' => 'estimated-time-' . $task->id
+                ])
                 
                 {{-- Description --}}
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em;">Description:</label>
-                    <textarea name="description" rows="3" placeholder="Optional" style="padding: 0.35rem; max-width: 300px; width: 100%;">{{ $task->description }}</textarea>
-                </div>
+                <x-inline-editable-field
+                    field-id="task-description-{{ $task->id }}"
+                    label="Description"
+                    value="{{ $task->description }}"
+                    name="description"
+                    type="textarea"
+                    rows="3"
+                    placeholder="No description"
+                />
                 
                 {{-- Recurring checkbox --}}
                 <div style="margin-bottom: 0.75rem;">
@@ -142,52 +119,6 @@
                         <input type="datetime-local" name="deadline_at" id="deadline-{{ $task->id }}" value="{{ $task->deadline_at ? $task->deadline_at->format('Y-m-d\TH:i') : '' }}" style="padding: 0.35rem; flex: 1; max-width: 300px;" data-task-id="{{ $task->id }}" @disabled($task->deadline_at === null)>
                         <button type="button" class="btn-today" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; white-space: nowrap;">Today</button>
                     </div>
-                </div>
-                
-                {{-- Universes Selection --}}
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9em; font-weight: 600;">Universes:</label>
-                    <div id="universes-container-{{ $task->id }}">
-                        @php
-                            $universesForEdit = $universes ?? \App\Models\Universe::orderBy('name')->get();
-                        @endphp
-                        @if($universeItems->isNotEmpty())
-                            @foreach($universeItems as $index => $universeItem)
-                                <div class="universe-item-row" data-index="{{ $index }}" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                    <select name="universe_ids[]" class="universe-select" required style="padding: 0.35rem; flex: 1; max-width: 300px;">
-                                        <option value="">— select universe —</option>
-                                        @foreach ($universesForEdit as $u)
-                                            <option value="{{ $u->id }}" @selected($universeItem->universe_id == $u->id)>
-                                                {{ $u->name }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; white-space: nowrap;">
-                                        <input type="radio" name="primary_universe" value="{{ $index }}" @checked($universeItem->is_primary)>
-                                        Primary
-                                    </label>
-                                    <button type="button" class="remove-universe-btn" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; font-size: 0.9rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
-                                </div>
-                            @endforeach
-                        @else
-                            <div class="universe-item-row" data-index="0" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                                <select name="universe_ids[]" class="universe-select" required style="padding: 0.35rem; flex: 1; max-width: 300px;">
-                                    <option value="">— select universe —</option>
-                                    @foreach ($universesForEdit as $u)
-                                        <option value="{{ $u->id }}" @selected(isset($currentUniverse) && $currentUniverse->id == $u->id)>
-                                            {{ $u->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; white-space: nowrap;">
-                                    <input type="radio" name="primary_universe" value="0" checked>
-                                    Primary
-                                </label>
-                                <button type="button" class="remove-universe-btn" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; font-size: 0.9rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
-                            </div>
-                        @endif
-                    </div>
-                    <button type="button" class="add-universe-btn" data-task-id="{{ $task->id }}" style="margin-top: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.85rem;">+ Add Universe</button>
                 </div>
                 
                 <input type="hidden" name="status" value="{{ $task->status ?? 'open' }}">
