@@ -60,7 +60,7 @@ The focus is on system design, UX reasoning, and iterative refinement.
 ### Setup steps
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/melisandres/universes.git
 cd universe-organizer
 composer install
 php artisan key:generate
