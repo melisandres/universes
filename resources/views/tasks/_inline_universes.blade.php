@@ -24,17 +24,19 @@
 @endphp
 
 <div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
-    <label class="inline-field-label">Universes</label>
+    {{-- Label and Pencil (always visible) --}}
+    <div class="inline-field-label-row">
+        <label class="inline-field-label">Universes</label>
+        <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit Universes">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+            </svg>
+        </button>
+    </div>
     
     {{-- View Mode --}}
     <div id="{{ $viewId }}" class="inline-field-view">
         <span class="inline-field-value">{{ $displayValue }}</span>
-        <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit Universes">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-        </button>
     </div>
     
     {{-- Edit Mode --}}
@@ -44,8 +46,8 @@
         <div id="universes-container-{{ $task->id }}">
             @if($universeItems->isNotEmpty())
                 @foreach($universeItems as $index => $universeItem)
-                    <div class="universe-item-row" data-index="{{ $index }}" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <select name="universe_ids[]" class="universe-select" required style="padding: 0.35rem; flex: 1; max-width: 300px;">
+                    <div class="universe-item-row inline-universe-item-row" data-index="{{ $index }}">
+                        <select name="universe_ids[]" class="universe-select inline-universe-select" required>
                             <option value="">— select universe —</option>
                             @foreach ($universesForEdit as $u)
                                 <option value="{{ $u->id }}" @selected($universeItem->universe_id == $u->id)>
@@ -53,16 +55,16 @@
                                 </option>
                             @endforeach
                         </select>
-                        <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; white-space: nowrap;">
+                        <label class="inline-universe-primary-label">
                             <input type="radio" name="primary_universe" value="{{ $index }}" @checked($universeItem->is_primary)>
                             Primary
                         </label>
-                        <button type="button" class="remove-universe-btn" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; font-size: 0.9rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
+                        <button type="button" class="remove-universe-btn inline-universe-remove-btn" data-task-id="{{ $task->id }}">Remove</button>
                     </div>
                 @endforeach
             @else
-                <div class="universe-item-row" data-index="0" style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <select name="universe_ids[]" class="universe-select" required style="padding: 0.35rem; flex: 1; max-width: 300px;">
+                <div class="universe-item-row inline-universe-item-row" data-index="0">
+                    <select name="universe_ids[]" class="universe-select inline-universe-select" required>
                         <option value="">— select universe —</option>
                         @foreach ($universesForEdit as $u)
                             <option value="{{ $u->id }}" @selected(isset($currentUniverse) && $currentUniverse->id == $u->id)>
@@ -70,18 +72,17 @@
                             </option>
                         @endforeach
                     </select>
-                    <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; white-space: nowrap;">
+                    <label class="inline-universe-primary-label">
                         <input type="radio" name="primary_universe" value="0" checked>
                         Primary
                     </label>
-                    <button type="button" class="remove-universe-btn" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; font-size: 0.9rem; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">Remove</button>
+                    <button type="button" class="remove-universe-btn inline-universe-remove-btn" data-task-id="{{ $task->id }}">Remove</button>
                 </div>
             @endif
         </div>
-        <button type="button" class="add-universe-btn" data-task-id="{{ $task->id }}" style="margin-top: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.85rem;">+ Add Universe</button>
-        <div class="inline-field-actions" style="margin-top: 0.75rem;">
+        <button type="button" class="add-universe-btn inline-universe-add-btn" data-task-id="{{ $task->id }}">+ Add Universe</button>
+        <div class="inline-field-actions inline-field-actions-spaced">
             <button type="button" class="inline-field-save-btn" data-field-id="{{ $fieldId }}">Save</button>
-            <button type="button" class="inline-field-cancel-btn" data-field-id="{{ $fieldId }}">Cancel</button>
         </div>
     </div>
 </div>

@@ -10,6 +10,7 @@
     'rows' => 3, // For textarea
     'customView' => null, // Custom view template for complex fields
     'customEdit' => null, // Custom edit template for complex fields
+    'customDisplayValue' => null, // Custom display value (for select fields to show text instead of value)
 ])
 
 @php
@@ -19,17 +20,30 @@
 @endphp
 
 <div class="inline-editable-field" data-field-id="{{ $fieldId }}">
-    <label class="inline-field-label">{{ $label }}</label>
+    {{-- Label and Pencil (always visible) --}}
+    @if($label)
+        <div class="inline-field-label-row">
+            <label class="inline-field-label">{{ $label }}</label>
+            <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit {{ $label }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                </svg>
+            </button>
+        </div>
+    @endif
     
-    {{-- View Mode: Display value with pencil icon --}}
-    <div id="{{ $viewId }}" class="inline-field-view">
-        <span class="inline-field-value">{{ $value ?: $placeholder }}</span>
-        <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit {{ $label }}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-        </button>
+    {{-- View Mode: Display value --}}
+    <div id="{{ $viewId }}" class="inline-field-view{{ !$label ? ' inline-field-view-no-label' : '' }}">
+        @if(!$label)
+            <span class="inline-field-value" data-placeholder="{{ $placeholder }}">{{ $customDisplayValue ?? ($value ?: $placeholder) }}</span>
+            <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                </svg>
+            </button>
+        @else
+            <span class="inline-field-value" data-placeholder="{{ $placeholder }}">{{ $customDisplayValue ?? ($value ?: $placeholder) }}</span>
+        @endif
     </div>
     
     {{-- Edit Mode: Form input --}}
@@ -69,7 +83,6 @@
         @endif
         <div class="inline-field-actions">
             <button type="button" class="inline-field-save-btn" data-field-id="{{ $fieldId }}">Save</button>
-            <button type="button" class="inline-field-cancel-btn" data-field-id="{{ $fieldId }}">Cancel</button>
         </div>
     </div>
 </div>

@@ -74,33 +74,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Handle edit button clicks
-    document.querySelectorAll('.edit-universe-btn').forEach(btn => {
+    // Handle universe edit toggle button clicks to toggle edit mode
+    document.querySelectorAll('.universe-edit-toggle-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             const universeId = this.dataset.universeId;
+            if (!universeId) return;
+            
             const viewMode = document.getElementById('universe-view-' + universeId);
             const editMode = document.getElementById('universe-edit-' + universeId);
             
+            if (!viewMode || !editMode) return;
+            
+            // Show edit mode
             viewMode.style.display = 'none';
+            editMode.classList.remove('d-none');
             editMode.style.display = 'block';
         });
     });
     
-    // Handle cancel button clicks (only for universe edits, not task edits)
-    document.querySelectorAll('.cancel-edit-btn[data-universe-id]').forEach(btn => {
+    // Handle close button (X) clicks to close edit mode
+    document.querySelectorAll('.universe-close-edit-btn').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.preventDefault();
             const universeId = this.dataset.universeId;
-            if (!universeId) return; // Skip if no universe ID
+            if (!universeId) return;
             
             const viewMode = document.getElementById('universe-view-' + universeId);
             const editMode = document.getElementById('universe-edit-' + universeId);
             
-            if (viewMode && editMode) {
-                viewMode.style.display = 'block';
-                editMode.style.display = 'none';
-            }
+            if (!viewMode || !editMode) return;
+            
+            // Hide edit mode
+            viewMode.style.display = 'block';
+            editMode.classList.add('d-none');
+            editMode.style.display = 'none';
         });
     });
     

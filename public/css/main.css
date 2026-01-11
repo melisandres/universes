@@ -129,11 +129,11 @@ button[type="submit"]:hover {
 }
 
 /* Delete buttons */
-form button[type="submit"]:not(.btn-primary) {
+form button[type="submit"]:not(.btn-primary):not(.log-form-submit-btn) {
     background-color: #dc3545;
 }
 
-form button[type="submit"]:not(.btn-primary):hover {
+form button[type="submit"]:not(.btn-primary):not(.log-form-submit-btn):hover {
     background-color: #c82333;
 }
 
@@ -358,10 +358,53 @@ form > label + textarea {
 /* Universe header - one line */
 .universe-header {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
 }
+
+.universe-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.universe-header button.universe-edit-toggle-btn,
+.universe-name-row button.universe-edit-toggle-btn,
+.universe-header .universe-edit-toggle-btn,
+.universe-name-row .universe-edit-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0.6;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.universe-header button.universe-edit-toggle-btn:hover,
+.universe-name-row button.universe-edit-toggle-btn:hover,
+.universe-header .universe-edit-toggle-btn:hover,
+.universe-name-row .universe-edit-toggle-btn:hover {
+    opacity: 1;
+    color: #007bff;
+    background-color: #f0f0f0;
+    transform: none;
+}
+
+.universe-header .universe-edit-toggle-btn svg,
+.universe-name-row .universe-edit-toggle-btn svg,
+button.universe-edit-toggle-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
 
 .universe-name {
     font-weight: 600;
@@ -475,17 +518,142 @@ form > label + textarea {
     border-radius: 6px;
     margin-top: 0.5rem;
     border: 1px solid #ffc107;
+    position: relative;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.task-edit-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.task-edit-mode .task-close-edit-btn,
+.task-edit-header .task-close-edit-btn,
+button.task-close-edit-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.task-edit-mode .task-close-edit-btn:hover,
+.task-edit-header .task-close-edit-btn:hover,
+button.task-close-edit-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
 }
 
 .task-edit-cards-container {
     display: flex;
     gap: 1rem;
     align-items: flex-start;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Responsive: Stack cards vertically on smaller screens */
+@media (max-width: 768px) {
+    .task-edit-cards-container {
+        flex-direction: column;
+    }
+}
+
+/* Responsive: Adjust for very small screens (320px minimum) */
+@media (max-width: 480px) {
+    .task-edit-mode {
+        padding: 0.5rem;
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    .task-edit-card {
+        padding: 0.5rem;
+    }
+    
+    .task-edit-cards-container {
+        gap: 0.75rem;
+    }
+    
+    .inline-field-deadline-container {
+        gap: 0.35rem;
+        max-width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .inline-field-deadline-container .inline-field-deadline-input {
+        font-size: 0.65em;
+        padding: 0.2rem;
+        max-width: 100%;
+        min-width: 0;
+        width: 100%;
+    }
+    
+    .inline-field-deadline-container .btn-today {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+        width: 100%;
+        order: -1;
+    }
+    
+    .inline-field-input {
+        max-width: 100%;
+    }
+}
+
+/* Extra small screens: 320px and below */
+@media (max-width: 320px) {
+    .task-edit-mode {
+        padding: 0.35rem;
+    }
+    
+    .task-edit-card {
+        padding: 0.35rem;
+    }
+    
+    .task-edit-cards-container {
+        gap: 0.5rem;
+    }
+    
+    .inline-field-deadline-container {
+        gap: 0.25rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .inline-field-deadline-container .inline-field-deadline-input {
+        font-size: 0.6em;
+        padding: 0.15rem;
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .inline-field-deadline-container .btn-today {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.7rem;
+        width: 100%;
+        order: -1;
+    }
 }
 
 .task-edit-card {
     flex: 1;
     min-width: 0;
+    max-width: 100%;
     padding: 0.75rem;
     background: white;
     border-radius: 4px;
@@ -666,12 +834,50 @@ p:only-child {
 
 /* Edit mode - hidden by default */
 .universe-edit-mode {
-    display: none;
-    padding: 1rem;
+    padding: 0.75rem;
     background: #fff3cd;
     border-radius: 6px;
     margin-top: 0.5rem;
     border: 1px solid #ffc107;
+    position: relative;
+}
+
+.universe-edit-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.5rem;
+}
+
+.universe-edit-mode .universe-close-edit-btn,
+.universe-edit-header .universe-close-edit-btn,
+button.universe-close-edit-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.universe-edit-mode .universe-close-edit-btn:hover,
+.universe-edit-header .universe-close-edit-btn:hover,
+button.universe-close-edit-btn:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #333;
+}
+
+.universe-edit-actions {
+    margin-top: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
 }
 
 /* Form input spacing */
@@ -1066,7 +1272,6 @@ a[href*="add"]:hover {
 .mb-1 { margin-bottom: 0.5rem; }
 .mb-2 { margin-bottom: 1rem; }
 
-
 /* ============================================
    Inline Editable Fields
    ============================================ */
@@ -1075,24 +1280,60 @@ a[href*="add"]:hover {
     margin-bottom: 0.75rem;
 }
 
+.inline-editable-field:not(:first-child) {
+    margin-top: 1rem;
+}
+
 .inline-field-label {
     display: block;
-    margin-bottom: 0.25rem;
-    font-size: 0.9em;
-    font-weight: 600;
-    color: #333;
+    margin-bottom: 0.15rem;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: #6c757d;
 }
+
+/* Status field display - large grey text */
+.inline-editable-field[data-field-id^="universe-status-"] .inline-field-value {
+    font-size: 1.2em;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+/* Status display in universe header (non-editable) - large grey text */
+.universe-status-display {
+    font-size: 1.2em;
+    font-weight: 500;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
 
 .inline-field-view {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    flex-direction: column;
+    gap: 0.15rem;
     padding: 0.35rem 0;
     min-height: 2rem;
 }
 
+.inline-field-view-no-label {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.inline-field-label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.inline-field-view .inline-field-label {
+    margin-bottom: 0;
+    display: inline;
+}
+
 .inline-field-value {
-    flex: 1;
     color: #333;
     font-size: 0.95em;
 }
@@ -1103,7 +1344,8 @@ a[href*="add"]:hover {
     font-style: italic;
 }
 
-.inline-field-edit-btn {
+.inline-editable-field .inline-field-edit-btn,
+button.inline-field-edit-btn {
     background: none;
     border: none;
     cursor: pointer;
@@ -1117,7 +1359,8 @@ a[href*="add"]:hover {
     opacity: 0.6;
 }
 
-.inline-field-edit-btn:hover {
+.inline-editable-field .inline-field-edit-btn:hover,
+button.inline-field-edit-btn:hover {
     opacity: 1;
     color: #007bff;
     background-color: #f0f0f0;
@@ -1155,8 +1398,10 @@ a[href*="add"]:hover {
     gap: 0.5rem;
 }
 
-.inline-field-save-btn,
-.inline-field-cancel-btn {
+.inline-editable-field .inline-field-save-btn,
+.inline-editable-field .inline-field-cancel-btn,
+button.inline-field-save-btn,
+button.inline-field-cancel-btn {
     padding: 0.35rem 0.75rem;
     border: 1px solid #ced4da;
     border-radius: 4px;
@@ -1165,23 +1410,128 @@ a[href*="add"]:hover {
     transition: all 0.2s;
 }
 
-.inline-field-save-btn {
+.inline-editable-field .inline-field-save-btn,
+button.inline-field-save-btn {
     background-color: #28a745;
     color: white;
     border-color: #28a745;
 }
 
-.inline-field-save-btn:hover {
+.inline-editable-field .inline-field-save-btn:hover,
+button.inline-field-save-btn:hover {
     background-color: #218838;
     border-color: #1e7e34;
 }
 
-.inline-field-cancel-btn {
+.inline-editable-field .inline-field-cancel-btn,
+button.inline-field-cancel-btn {
     background-color: #fff;
     color: #6c757d;
 }
 
-.inline-field-cancel-btn:hover {
+.inline-editable-field .inline-field-cancel-btn:hover,
+button.inline-field-cancel-btn:hover {
     background-color: #f8f9fa;
     border-color: #adb5bd;
+}
+
+/* ============================================
+   Inline Field Custom Templates
+   ============================================ */
+
+.inline-field-deadline-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.inline-field-deadline-container .inline-field-deadline-input {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    max-width: 100%;
+    font-size: 0.75em;
+    box-sizing: border-box;
+}
+
+.inline-field-deadline-container .btn-today {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* ============================================
+   Task Card Log Form Buttons
+   ============================================ */
+
+.task-log-form .log-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.task-log-form button.log-form-submit-btn,
+.task-edit-card button.log-form-submit-btn,
+.task-edit-mode button.log-form-submit-btn,
+.task-edit-mode .log-form-actions button.log-form-submit-btn,
+form.task-log-form button.log-form-submit-btn[type="submit"],
+.task-edit-card form button.log-form-submit-btn[type="submit"] {
+    padding: 0.35rem 0.75rem;
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.task-log-form button.log-form-submit-btn:hover,
+.task-edit-card button.log-form-submit-btn:hover,
+.task-edit-mode button.log-form-submit-btn:hover,
+.task-edit-mode .log-form-actions button.log-form-submit-btn:hover,
+form.task-log-form button.log-form-submit-btn[type="submit"]:hover,
+.task-edit-card form button.log-form-submit-btn[type="submit"]:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+.task-log-form .complete-and-log-btn,
+.task-edit-card .complete-and-log-btn,
+button.complete-and-log-btn {
+    padding: 0.35rem 0.75rem;
+    background-color: #28a745;
+    color: white;
+    border: 1px solid #28a745;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.task-log-form .complete-and-log-btn:hover,
+.task-edit-card .complete-and-log-btn:hover,
+button.complete-and-log-btn:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.task-edit-mode .delete-task-btn,
+.task-action-buttons .delete-task-btn,
+button.delete-task-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.task-edit-mode .delete-task-btn:hover,
+.task-action-buttons .delete-task-btn:hover,
+button.delete-task-btn:hover {
+    background-color: #c82333;
 }

@@ -56,7 +56,6 @@ class TaskCardEditor {
             editMode: document.getElementById(`task-edit-${id}`),
             editForm: document.querySelector(`.task-edit-form-simple[data-task-id="${id}"]`),
             taskName: document.querySelector(`.task-name-clickable[data-task-id="${id}"]`),
-            cancelBtn: document.querySelector(`.cancel-edit-btn[data-task-id="${id}"]`),
             deadlineInput: document.getElementById(`deadline-${id}`) || document.querySelector(`input[name="deadline_at"][data-task-id="${id}"]`),
             todayBtn: document.querySelector(`.btn-today[data-task-id="${id}"]`),
                 universesContainer: document.getElementById(`universes-container-${id}`),
@@ -73,8 +72,10 @@ class TaskCardEditor {
         if (this.elements.taskName) {
             this.elements.taskName.addEventListener('click', () => this.toggleEditMode(true));
         }
-        if (this.elements.cancelBtn) {
-            this.elements.cancelBtn.addEventListener('click', () => this.toggleEditMode(false));
+        // Close button (X) in edit mode header
+        const closeBtn = document.querySelector(`.task-close-edit-btn[data-task-id="${this.taskId}"]`);
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.toggleEditMode(false));
         }
 
             // Complete checkbox with delay

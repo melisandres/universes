@@ -15,42 +15,38 @@
     }
 @endphp
 
-<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
+<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-task-id="{{ $task->id }}" data-no-auto-init="true">
     {{-- View Mode --}}
-    <div id="{{ $viewId }}" class="inline-field-view">
+    <div id="{{ $viewId }}" class="inline-field-view inline-field-view-no-label">
         <span class="inline-field-value">{{ $displayValue }}</span>
         <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit Deadline">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
             </svg>
         </button>
     </div>
     
     {{-- Edit Mode --}}
     <div id="{{ $editId }}" class="inline-field-edit d-none">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <div class="inline-field-deadline-container">
             <input 
                 type="datetime-local" 
                 name="deadline_at" 
                 id="input-{{ $fieldId }}"
-                class="inline-field-input"
+                class="inline-field-input inline-field-deadline-input"
                 value="{{ $inputValue }}" 
                 data-task-id="{{ $task->id }}"
-                style="flex: 1; max-width: 300px;"
             >
             <button 
                 type="button" 
                 class="btn-today" 
-                data-task-id="{{ $task->id }}" 
-                style="padding: 0.35rem 0.75rem; font-size: 0.85rem; white-space: nowrap;"
+                data-task-id="{{ $task->id }}"
             >
                 Today
             </button>
         </div>
         <div class="inline-field-actions">
             <button type="button" class="inline-field-save-btn" data-field-id="{{ $fieldId }}">Save</button>
-            <button type="button" class="inline-field-cancel-btn" data-field-id="{{ $fieldId }}">Cancel</button>
         </div>
     </div>
 </div>
@@ -113,11 +109,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return 'deadline: ' + formattedDate;
         },
         onSave: async function(newValue, oldValue, editor) {
+            const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
+            if (!fieldElement) return false;
+            const taskId = parseInt(fieldElement.dataset.taskId, 10);
+            
             const deadlineInput = document.getElementById('input-' + fieldId);
             if (!deadlineInput) return false;
             
             const deadlineValue = deadlineInput.value || '';
-            const success = await TaskFieldSaver.saveField({{ $task->id }}, 'deadline_at', deadlineValue);
+            const success = await TaskFieldSaver.saveField(taskId, 'deadline_at', deadlineValue);
             
             if (success) {
                 setTimeout(function() {
@@ -158,7 +158,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Handle "Today" button
-    const todayBtn = document.querySelector(`.btn-today[data-task-id="{{ $task->id }}"]`);
+    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
+    const taskId = fieldElement ? fieldElement.dataset.taskId : null;
+    const todayBtn = taskId ? document.querySelector(`.btn-today[data-task-id="${taskId}"]`) : null;
     if (todayBtn) {
         todayBtn.addEventListener('click', function() {
             const now = new Date();

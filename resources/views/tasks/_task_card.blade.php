@@ -29,7 +29,10 @@
     
     {{-- Simple Edit Mode --}}
     @if(isset($inlineEdit) && $inlineEdit)
-        <div id="task-edit-{{ $task->id }}" class="task-edit-mode d-none">
+        <div id="task-edit-{{ $task->id }}" class="task-edit-mode d-none" data-task-id="{{ $task->id }}">
+            <div class="task-edit-header">
+                <button type="button" class="task-close-edit-btn" data-task-id="{{ $task->id }}" aria-label="Close">×</button>
+            </div>
             <div class="task-edit-cards-container">
                 {{-- Left Card: Edit Form --}}
                 <div class="task-edit-card">
@@ -95,12 +98,11 @@
                 
                 <input type="hidden" name="status" value="{{ $task->status ?? 'open' }}">
                 
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <div class="task-action-buttons">
                     @if($task->isRecurring() && $task->completed_at === null && $task->skipped_at === null)
                         <button type="button" class="skip-task-btn" data-task-id="{{ $task->id }}">Skip</button>
                     @endif
-                    <button type="button" class="delete-task-btn" data-task-id="{{ $task->id }}" style="background-color: #dc3545; color: white; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer;">Delete</button>
-                    <button type="button" class="cancel-edit-btn" data-task-id="{{ $task->id }}">Cancel</button>
+                    <button type="button" class="delete-task-btn" data-task-id="{{ $task->id }}">Delete</button>
                 </div>
                     </form>
                 </div>
@@ -109,9 +111,9 @@
                 <div class="task-edit-card">
                     <form method="POST" action="{{ route('tasks.log', $task) }}" class="task-log-form">
                         @csrf
-                        <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em; font-weight: 600;">Time:</label>
-                            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <div class="log-form-field">
+                            <label class="log-form-label">Time:</label>
+                            <div class="log-form-input-container">
                                 <input type="number" 
                                        name="minutes" 
                                        id="log-minutes-{{ $task->id }}"
@@ -119,26 +121,26 @@
                                        min="0" 
                                        step="0.25"
                                        placeholder="Optional" 
-                                       style="padding: 0.35rem; flex: 1; min-width: 100px; max-width: 300px;">
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer; font-size: 0.9em;">
+                                       class="log-form-input">
+                                <div class="log-form-radio-group">
+                                    <label class="log-form-radio-label">
                                         <input type="radio" name="time_unit" value="minutes" id="log-time-unit-minutes-{{ $task->id }}">
                                         <span>Minutes</span>
                                     </label>
-                                    <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer; font-size: 0.9em;">
+                                    <label class="log-form-radio-label">
                                         <input type="radio" name="time_unit" value="hours" id="log-time-unit-hours-{{ $task->id }}" checked>
                                         <span>Hours</span>
                                     </label>
                                 </div>
                             </div>
                         </div>
-                        <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em; font-weight: 600;">Notes:</label>
-                            <textarea name="notes" rows="4" placeholder="Optional" style="padding: 0.35rem; width: 100%; max-width: 300px; resize: vertical;"></textarea>
+                        <div class="log-form-field">
+                            <label class="log-form-label">Notes:</label>
+                            <textarea name="notes" rows="4" placeholder="Optional" class="log-form-textarea"></textarea>
                         </div>
-                        <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem;">
-                            <button type="submit" style="padding: 0.35rem 0.75rem;">Log</button>
-                            <button type="button" class="complete-and-log-btn" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Complete and Log</button>
+                        <div class="log-form-actions">
+                            <button type="submit" class="log-form-submit-btn">Log</button>
+                            <button type="button" class="complete-and-log-btn" data-task-id="{{ $task->id }}">Complete & Log</button>
                         </div>
                     </form>
                 </div>
@@ -148,7 +150,9 @@
         {{-- Initialize inline editable fields with individual save functionality --}}
         <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const taskId = {{ $task->id }};
+            const editMode = document.getElementById('task-edit-{{ $task->id }}');
+            if (!editMode) return;
+            const taskId = parseInt(editMode.dataset.taskId, 10);
             
             // Wait a bit for auto-initialization to complete
             setTimeout(function() {

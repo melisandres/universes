@@ -35,22 +35,22 @@ class InlineFieldEditor {
     }
     
     attachEventListeners() {
-        // Edit button - show edit mode
-        const editBtn = this.viewElement?.querySelector('.inline-field-edit-btn');
+        // Edit button - toggle between edit and view mode (acts as cancel when in edit mode)
+        const editBtn = document.querySelector(`.inline-field-edit-btn[data-field-id="${this.fieldId}"]`);
         if (editBtn) {
-            editBtn.addEventListener('click', () => this.enterEditMode());
+            editBtn.addEventListener('click', () => {
+                if (this.isEditing()) {
+                    this.handleCancel();
+                } else {
+                    this.enterEditMode();
+                }
+            });
         }
         
         // Save button
         const saveBtn = this.editElement?.querySelector('.inline-field-save-btn');
         if (saveBtn) {
             saveBtn.addEventListener('click', () => this.handleSave());
-        }
-        
-        // Cancel button
-        const cancelBtn = this.editElement?.querySelector('.inline-field-cancel-btn');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => this.handleCancel());
         }
         
         // Auto-save on Enter key
@@ -86,7 +86,13 @@ class InlineFieldEditor {
         if (!this.viewElement || !this.editElement) return;
         
         this.originalValue = this.getInputValue();
-        this.viewElement.classList.add('d-none');
+        
+        // Hide only the value display, keep label and pencil visible
+        const valueElement = this.viewElement.querySelector('.inline-field-value');
+        if (valueElement) {
+            valueElement.style.display = 'none';
+        }
+        
         this.editElement.classList.remove('d-none');
         
         // Focus the input
@@ -105,7 +111,12 @@ class InlineFieldEditor {
     exitEditMode() {
         if (!this.viewElement || !this.editElement) return;
         
-        this.viewElement.classList.remove('d-none');
+        // Show the value display again
+        const valueElement = this.viewElement.querySelector('.inline-field-value');
+        if (valueElement) {
+            valueElement.style.display = '';
+        }
+        
         this.editElement.classList.add('d-none');
     }
     

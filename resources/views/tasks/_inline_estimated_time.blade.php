@@ -27,37 +27,38 @@
     }
 @endphp
 
-<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
-    <label class="inline-field-label">Estimated Time</label>
-    
-    {{-- View Mode --}}
-    <div id="{{ $viewId }}" class="inline-field-view">
-        <span class="inline-field-value">{{ $displayValue }}</span>
+<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-task-id="{{ $task->id }}" data-no-auto-init="true">
+    {{-- Label and Pencil (always visible) --}}
+    <div class="inline-field-label-row">
+        <label class="inline-field-label">Estimated Time</label>
         <button type="button" class="inline-field-edit-btn" data-field-id="{{ $fieldId }}" aria-label="Edit Estimated Time">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
             </svg>
         </button>
     </div>
     
+    {{-- View Mode --}}
+    <div id="{{ $viewId }}" class="inline-field-view">
+        <span class="inline-field-value">{{ $displayValue }}</span>
+    </div>
+    
     {{-- Edit Mode --}}
     <div id="{{ $editId }}" class="inline-field-edit d-none">
-        <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+        <div class="inline-field-time-container">
             <input 
                 type="number" 
                 name="estimated_time" 
                 id="input-{{ $fieldId }}"
-                class="inline-field-input"
+                class="inline-field-input inline-field-time-input"
                 value="{{ $displayTime }}" 
                 data-original-minutes="{{ $task->estimated_time ?? 0 }}"
                 min="0" 
                 step="{{ $defaultStep }}"
                 placeholder="Optional"
-                style="flex: 1; min-width: 100px; max-width: 300px;"
             >
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer; font-size: 0.9em;">
+            <div class="inline-field-unit-selector">
+                <label class="inline-field-radio-label">
                     <input 
                         type="radio" 
                         name="time_unit" 
@@ -67,7 +68,7 @@
                     >
                     <span>Minutes</span>
                 </label>
-                <label style="display: flex; align-items: center; gap: 0.25rem; margin: 0; font-weight: normal; cursor: pointer; font-size: 0.9em;">
+                <label class="inline-field-radio-label">
                     <input 
                         type="radio" 
                         name="time_unit" 
@@ -81,7 +82,6 @@
         </div>
         <div class="inline-field-actions">
             <button type="button" class="inline-field-save-btn" data-field-id="{{ $fieldId }}">Save</button>
-            <button type="button" class="inline-field-cancel-btn" data-field-id="{{ $fieldId }}">Cancel</button>
         </div>
     </div>
 </div>
@@ -143,6 +143,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         onSave: async function(newValue, oldValue, editor) {
+            const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
+            if (!fieldElement) return false;
+            const taskId = parseInt(fieldElement.dataset.taskId, 10);
+            
             const timeInput = document.getElementById('input-' + fieldId);
             const minutesRadio = document.getElementById('time-unit-minutes-' + fieldId);
             const hoursRadio = document.getElementById('time-unit-hours-' + fieldId);
@@ -150,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!timeInput || !timeInput.value) {
                 // Clear estimated time
-                const success = await TaskFieldSaver.saveField({{ $task->id }}, 'estimated_time', '', { timeUnit: 'hours' });
+                const success = await TaskFieldSaver.saveField(taskId, 'estimated_time', '', { timeUnit: 'hours' });
                 if (success) {
                     setTimeout(function() {
                         updateEstimatedTimeDisplay();
@@ -165,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return false;
             }
             
-            const success = await TaskFieldSaver.saveField({{ $task->id }}, 'estimated_time', timeValue, { timeUnit: unit });
+            const success = await TaskFieldSaver.saveField(taskId, 'estimated_time', timeValue, { timeUnit: unit });
             
             if (success) {
                 setTimeout(function() {

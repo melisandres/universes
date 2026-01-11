@@ -1,48 +1,81 @@
 <li>
-    {{-- View Mode --}}
-    <div id="universe-view-{{ $universe->id }}" class="universe-header" data-parent-id="{{ $universe->parent_id ?? '' }}">
-        <span class="universe-name">{{ $universe->name }}</span> 
-        <select name="status" class="status-dropdown universe-status-dropdown" data-universe-id="{{ $universe->id }}" data-update-url="{{ route('universes.update', $universe) }}">
-            @foreach ($statuses as $status)
-                <option value="{{ $status }}" @selected($universe->status === $status)>
-                    {{ $status }}
-                </option>
-            @endforeach
-        </select>
-        <div class="btns universe-header-btns">
-            <button type="button" class="edit-universe-btn universe-edit-btn" data-universe-id="{{ $universe->id }}">edit</button>
+    {{-- Simple View Mode --}}
+    <div id="universe-view-{{ $universe->id }}" class="universe-header" data-parent-id="{{ $universe->parent_id ?? '' }}" data-universe-id="{{ $universe->id }}" data-update-url="{{ route('universes.update', $universe) }}">
+        {{-- Status Display (non-editable) --}}
+        <div class="universe-status-display">{{ str_replace('_', ' ', $universe->status) }}</div>
+        
+        <div class="universe-name-row">
+            <strong class="universe-name">{{ $universe->name }}</strong>
+            <button type="button" class="universe-edit-toggle-btn" data-universe-id="{{ $universe->id }}" aria-label="Edit universe">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    
+    {{-- Expandable Edit Mode --}}
+    <div id="universe-edit-{{ $universe->id }}" class="universe-edit-mode d-none" data-universe-id="{{ $universe->id }}">
+        <div class="universe-edit-header">
+            <button type="button" class="universe-close-edit-btn" data-universe-id="{{ $universe->id }}" aria-label="Close">×</button>
+        </div>
+        {{-- Status --}}
+        @php
+            $statusOptions = [];
+            foreach ($statuses as $status) {
+                $statusOptions[$status] = str_replace('_', ' ', $status);
+            }
+        @endphp
+        <x-inline-editable-field
+            field-id="universe-status-{{ $universe->id }}"
+            label=""
+            value="{{ $universe->status }}"
+            name="status"
+            type="select"
+            :options="$statusOptions"
+            :custom-display-value="str_replace('_', ' ', $universe->status)"
+        />
+        
+        {{-- Name --}}
+        <x-inline-editable-field
+            field-id="universe-name-{{ $universe->id }}"
+            label="Name"
+            value="{{ $universe->name }}"
+            name="name"
+            type="text"
+            required
+        />
+        
+        {{-- Parent --}}
+        @php
+            $parentOptions = ['' => '— none —'];
+            foreach ($allUniverses as $u) {
+                if ($u->id != $universe->id) {
+                    $parentOptions[$u->id] = $u->name;
+                }
+            }
+            $parentValue = $universe->parent_id ?? '';
+            $parentDisplayValue = $parentValue ? ('child of ' . ($allUniverses->firstWhere('id', $parentValue)->name ?? '— none —')) : 'no parent';
+        @endphp
+        <x-inline-editable-field
+            field-id="universe-parent-{{ $universe->id }}"
+            label="Parent"
+            value="{{ $parentValue }}"
+            placeholder="{{ $parentDisplayValue }}"
+            name="parent_id"
+            type="select"
+            :options="$parentOptions"
+            :custom-display-value="$parentDisplayValue"
+        />
+        
+        {{-- Delete Button --}}
+        <div class="universe-edit-actions">
             <form action="{{ route('universes.destroy', $universe) }}" method="POST" class="inline-form">
                 @csrf
                 @method('DELETE')
-                <button type="submit" onclick="return confirm('Are you sure?')">delete</button>
+                <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
             </form>
         </div>
-    </div>
-
-    {{-- Edit Mode --}}
-    <div id="universe-edit-{{ $universe->id }}" class="universe-edit-mode">
-        <form method="POST" action="{{ route('universes.update', $universe) }}" class="inline-edit-form" data-universe-id="{{ $universe->id }}">
-            @csrf
-            @method('PUT')
-
-            <label>Name:</label>
-            <input type="text" name="name" value="{{ $universe->name }}" required class="universe-form-input">
-
-            <label>Parent:</label>
-            <select name="parent_id" class="universe-form-input">
-                <option value="">— none —</option>
-                @foreach ($allUniverses as $u)
-                    @if($u->id != $universe->id)
-                        <option value="{{ $u->id }}" @selected($universe->parent_id == $u->id)>
-                            {{ $u->name }}
-                        </option>
-                    @endif
-                @endforeach
-            </select>
-
-            <button type="submit">Save</button>
-            <button type="button" class="cancel-edit-btn" data-universe-id="{{ $universe->id }}">Cancel</button>
-        </form>
     </div>
 
     <a href="{{ route('tasks.create', ['universe_id' => $universe->id]) }}">
