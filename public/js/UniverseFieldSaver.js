@@ -48,10 +48,20 @@ class UniverseFieldSaver {
         formData.append('parent_id', fieldName === 'parent_id' ? (fieldValue || '') : currentParentId);
         
         // Get current status from inline editable field
+        // Read from the select element (may be in hidden edit div)
         const statusFieldId = `universe-status-${universeId}`;
-        const statusViewElement = document.getElementById(`inline-view-${statusFieldId}`);
-        const statusValueElement = statusViewElement ? statusViewElement.querySelector('.inline-field-value') : null;
-        const currentStatus = statusValueElement ? statusValueElement.textContent.trim() : 'active';
+        const statusSelectElement = document.getElementById(`input-${statusFieldId}`);
+        let currentStatus = 'active';
+        
+        if (statusSelectElement) {
+            currentStatus = statusSelectElement.value || 'active';
+        } else {
+            // Fallback: try to get from the editor's stored value
+            if (window.inlineFieldEditors && window.inlineFieldEditors[statusFieldId]) {
+                const editor = window.inlineFieldEditors[statusFieldId];
+                currentStatus = editor.originalValue || 'active';
+            }
+        }
         formData.append('status', fieldName === 'status' ? fieldValue : currentStatus);
 
         try {
@@ -84,8 +94,32 @@ class UniverseFieldSaver {
             }
 
             if (data.success) {
-                // Reload page to show updated hierarchy
-                window.location.reload();
+                // Update the data-parent-id attribute if parent_id was changed
+                if (fieldName === 'parent_id') {
+                    viewDiv.dataset.parentId = fieldValue || '';
+                    // Reload page to show updated hierarchy
+                    // Store which universe was expanded before reload
+                    sessionStorage.setItem('expandedUniverseId', universeId.toString());
+                    window.location.reload();
+                } else {
+                    // For name and status, just update the display without reloading
+                    // The display value is already updated by the InlineFieldEditor
+                    // Update status display in non-expanded view if status was changed
+                    if (fieldName === 'status') {
+                        const statusDisplay = document.querySelector(`#universe-view-${universeId} .universe-status-display`);
+                        if (statusDisplay) {
+                            // Replace underscores with spaces for display
+                            statusDisplay.textContent = fieldValue.replace(/_/g, ' ');
+                        }
+                    }
+                    // Update name in non-expanded view if name was changed
+                    if (fieldName === 'name') {
+                        const nameElement = document.querySelector(`#universe-view-${universeId} .universe-name`);
+                        if (nameElement) {
+                            nameElement.textContent = fieldValue;
+                        }
+                    }
+                }
                 return true;
             } else {
                 alert('Error updating universe');

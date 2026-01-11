@@ -1,4 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Restore expanded universe if it was saved before reload
+    const expandedUniverseId = sessionStorage.getItem('expandedUniverseId');
+    if (expandedUniverseId) {
+        sessionStorage.removeItem('expandedUniverseId');
+        const universeId = parseInt(expandedUniverseId, 10);
+        const viewMode = document.getElementById('universe-view-' + universeId);
+        const editMode = document.getElementById('universe-edit-' + universeId);
+        if (viewMode && editMode) {
+            // Expand the universe card
+            viewMode.style.display = 'none';
+            editMode.classList.remove('d-none');
+            editMode.style.display = 'block';
+        }
+    }
+    
     // Get CSRF token from meta tag or form
     function getCsrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content ||
