@@ -6,7 +6,6 @@
  * - Form submission via AJAX
  * - Universe add/remove
  * - Deadline management
- * - Recurring task toggle
  * - Status pill updates
  * - Complete checkbox with delay
  * - Time unit conversion (minutes/hours)
@@ -23,8 +22,6 @@ class TaskCardEditor {
         this.parseDataAttributes();
         this.cacheElements();
         this.attachEventListeners();
-        this.toggleDeadlineInput(); // Initialize deadline visibility
-        this.toggleRecurringTaskDropdown(); // Initialize recurring visibility
         this.updateStatusPillFromDeadline(); // Initialize status pill based on deadline
     }
     
@@ -60,12 +57,8 @@ class TaskCardEditor {
             editForm: document.querySelector(`.task-edit-form-simple[data-task-id="${id}"]`),
             taskName: document.querySelector(`.task-name-clickable[data-task-id="${id}"]`),
             cancelBtn: document.querySelector(`.cancel-edit-btn[data-task-id="${id}"]`),
-            deadlineCheckbox: document.getElementById(`deadline-checkbox-${id}`),
-            deadlineContainer: document.getElementById(`deadline-container-${id}`),
-            deadlineInput: document.getElementById(`deadline-${id}`),
+            deadlineInput: document.getElementById(`deadline-${id}`) || document.querySelector(`input[name="deadline_at"][data-task-id="${id}"]`),
             todayBtn: document.querySelector(`.btn-today[data-task-id="${id}"]`),
-            recurringCheckbox: document.getElementById(`recurring-checkbox-${id}`),
-                recurringContainer: document.getElementById(`recurring-task-container-${id}`),
                 universesContainer: document.getElementById(`universes-container-${id}`),
                 addUniverseBtn: document.querySelector(`.add-universe-btn[data-task-id="${id}"]`),
                 completeCheckbox: document.querySelector(`.complete-task-checkbox[data-task-id="${id}"]`),
@@ -83,11 +76,6 @@ class TaskCardEditor {
         if (this.elements.cancelBtn) {
             this.elements.cancelBtn.addEventListener('click', () => this.toggleEditMode(false));
         }
-        
-            // Form submission
-            if (this.elements.editForm) {
-                this.elements.editForm.addEventListener('submit', (e) => this.handleFormSubmit(e));
-            }
 
             // Complete checkbox with delay
             if (this.elements.completeCheckbox) {
@@ -95,33 +83,19 @@ class TaskCardEditor {
                 this.elements.completeCheckbox.addEventListener('change', (e) => this.handleCompleteCheckbox(e));
             }
         
-        // Deadline checkbox toggle (handled above with status pill update)
-        
-        // Today button
-        if (this.elements.todayBtn) {
-            this.elements.todayBtn.addEventListener('click', () => {
-                this.setDeadlineToday();
-                this.updateStatusPillFromDeadline();
-            });
-        }
-
         // Deadline input change - update status pill
         if (this.elements.deadlineInput) {
             this.elements.deadlineInput.addEventListener('change', () => this.updateStatusPillFromDeadline());
             this.elements.deadlineInput.addEventListener('input', () => this.updateStatusPillFromDeadline());
         }
-
-        // Deadline checkbox change - update status pill
-        if (this.elements.deadlineCheckbox) {
-            this.elements.deadlineCheckbox.addEventListener('change', () => {
-                this.toggleDeadlineInput();
+        
+        // Today button (may be in inline editable field)
+        const todayBtn = document.querySelector(`.btn-today[data-task-id="${this.taskId}"]`);
+        if (todayBtn) {
+            todayBtn.addEventListener('click', () => {
+                this.setDeadlineToday();
                 this.updateStatusPillFromDeadline();
             });
-        }
-        
-        // Recurring checkbox toggle
-        if (this.elements.recurringCheckbox) {
-            this.elements.recurringCheckbox.addEventListener('change', () => this.toggleRecurringTaskDropdown());
         }
         
         // Universe add/remove buttons (using event delegation)
@@ -283,30 +257,6 @@ class TaskCardEditor {
     }
     
     /**
-     * Toggle recurring task dropdown visibility based on checkbox state
-     */
-    toggleRecurringTaskDropdown() {
-        const checkbox = this.elements.recurringCheckbox;
-        const container = this.elements.recurringContainer;
-        
-        if (!checkbox || !container) return;
-        
-        // Remove/add d-none class (which uses !important)
-        if (checkbox.checked) {
-            container.classList.remove('d-none');
-            container.style.display = 'block';
-        } else {
-            container.classList.add('d-none');
-            container.style.display = 'none';
-            // Clear the selection if unchecked
-            const select = container.querySelector('select[name="recurring_task_id"]');
-            if (select) {
-                select.value = '';
-            }
-        }
-    }
-    
-    /**
      * Set deadline to today at 5pm
      */
     setDeadlineToday() {
@@ -321,12 +271,7 @@ class TaskCardEditor {
         const hours = String(today.getHours()).padStart(2, '0');
         const minutes = String(today.getMinutes()).padStart(2, '0');
         input.value = `${year}-${month}-${day}T${hours}:${minutes}`;
-        
-        // Ensure the deadline checkbox is checked and container is visible
-        if (this.elements.deadlineCheckbox && !this.elements.deadlineCheckbox.checked) {
-            this.elements.deadlineCheckbox.checked = true;
-            this.toggleDeadlineInput();
-        }
+        input.disabled = false;
     }
     
     /**
@@ -389,40 +334,6 @@ class TaskCardEditor {
         }
     }
 
-    /**
-     * Toggle deadline input visibility based on checkbox state
-     */
-    toggleDeadlineInput() {
-        const checkbox = this.elements.deadlineCheckbox;
-        const container = this.elements.deadlineContainer;
-        
-        if (!checkbox || !container) return;
-        
-        // Remove/add d-none class (which uses !important)
-        if (checkbox.checked) {
-            container.classList.remove('d-none');
-            container.style.display = 'block';
-        } else {
-            container.classList.add('d-none');
-            container.style.display = 'none';
-        }
-        
-        // If unchecked, clear and disable the deadline value
-        if (!checkbox.checked) {
-            const deadlineInput = container.querySelector('input[name="deadline_at"]');
-            if (deadlineInput) {
-                deadlineInput.value = '';
-                deadlineInput.disabled = true;
-            }
-        } else {
-            // If checked, enable the input
-            const deadlineInput = container.querySelector('input[name="deadline_at"]');
-            if (deadlineInput) {
-                deadlineInput.disabled = false;
-            }
-        }
-    }
-    
     toggleEditMode(showEdit) {
         if (showEdit) {
             if (this.elements.viewMode) this.elements.viewMode.style.display = 'none';
@@ -439,25 +350,6 @@ class TaskCardEditor {
         }
     }
     
-    clearDeadlineIfUnchecked() {
-        const checkbox = this.elements.deadlineCheckbox;
-        const container = this.elements.deadlineContainer;
-        
-        if (!checkbox || !container) return;
-        
-        if (!checkbox.checked) {
-            const deadlineInput = container.querySelector('input[name="deadline_at"]');
-            if (deadlineInput) {
-                deadlineInput.value = '';
-                deadlineInput.disabled = true;
-            }
-        } else {
-            const deadlineInput = container.querySelector('input[name="deadline_at"]');
-            if (deadlineInput) {
-                deadlineInput.disabled = false;
-            }
-        }
-    }
 
     /**
      * Update stored minutes value based on current input and selected unit
@@ -562,8 +454,6 @@ class TaskCardEditor {
     async handleFormSubmit(e) {
         e.preventDefault();
         
-        // Clear deadline if checkbox is unchecked
-        this.clearDeadlineIfUnchecked();
         
         const form = this.elements.editForm;
         const formData = new FormData(form);

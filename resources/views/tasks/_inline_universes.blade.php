@@ -139,13 +139,88 @@ document.addEventListener('DOMContentLoaded', function() {
             // This won't be called for complex fields, but we need it for the interface
             return value || 'None';
         },
-        onSave: function(newValue, oldValue, editor) {
-            // Update display from current form state
-            // Use setTimeout to ensure it runs after the view mode is shown
-            setTimeout(function() {
-                updateUniversesDisplay();
-            }, 50);
-            return true; // Allow UI update
+        onSave: async function(newValue, oldValue, editor) {
+            const container = document.getElementById('universes-container-{{ $task->id }}');
+            if (!container) return false;
+            
+            // Collect all universe IDs and primary index
+            const rows = container.querySelectorAll('.universe-item-row');
+            const universeIds = [];
+            let primaryIndex = 0;
+            
+            rows.forEach((row, index) => {
+                const select = row.querySelector('select[name="universe_ids[]"]');
+                const primaryRadio = row.querySelector(`input[name="primary_universe"][value="${index}"]`);
+                
+                if (select && select.value && select.value !== '') {
+                    universeIds.push(select.value);
+                    if (primaryRadio && primaryRadio.checked) {
+                        primaryIndex = universeIds.length - 1;
+                    }
+                }
+            });
+            
+            if (universeIds.length === 0) {
+                alert('At least one universe is required');
+                return false;
+            }
+            
+            // Save universes - we need to send both universe_ids and primary_universe
+            // Since TaskFieldSaver uses FormData, we'll need to handle this specially
+            const form = document.querySelector(`.task-edit-form-simple[data-task-id="{{ $task->id }}"]`);
+            if (!form) return false;
+            
+            const formData = new FormData(form);
+            formData.delete('universe_ids[]');
+            formData.delete('primary_universe');
+            
+            universeIds.forEach(id => {
+                formData.append('universe_ids[]', id);
+            });
+            formData.append('primary_universe', primaryIndex);
+            
+            if (!formData.has('_method')) {
+                formData.append('_method', 'PUT');
+            }
+            
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+            if (!csrfToken) return false;
+            
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                
+                if (response.redirected) return false;
+                
+                const data = await response.json();
+                
+                if (!response.ok || !data.success) {
+                    let errorMessage = 'Error updating universes';
+                    if (data.errors) {
+                        errorMessage = Object.values(data.errors).flat().join('\n');
+                    } else if (data.message) {
+                        errorMessage = data.message;
+                    }
+                    alert('Error: ' + errorMessage);
+                    return false;
+                }
+                
+                setTimeout(function() {
+                    updateUniversesDisplay();
+                }, 50);
+                return true;
+            } catch (error) {
+                console.error('Error saving universes:', error);
+                alert('Error: ' + (error.message || 'Error updating universes'));
+                return false;
+            }
         }
     });
     

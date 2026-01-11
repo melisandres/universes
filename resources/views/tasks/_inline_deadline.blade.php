@@ -7,17 +7,15 @@
     $editId = "inline-edit-{$fieldId}";
     
     // Format display value
-    $displayValue = 'Not set';
+    $displayValue = 'no deadline';
     $inputValue = '';
     if ($task->deadline_at) {
-        $displayValue = $task->deadline_at->format('M j, Y g:i A');
+        $displayValue = 'deadline: ' . $task->deadline_at->format('M j, Y g:i A');
         $inputValue = $task->deadline_at->format('Y-m-d\TH:i');
     }
 @endphp
 
-<div class="inline-editable-field" data-field-id="{{ $fieldId }}">
-    <label class="inline-field-label">Deadline</label>
-    
+<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
     {{-- View Mode --}}
     <div id="{{ $viewId }}" class="inline-field-view">
         <span class="inline-field-value">{{ $displayValue }}</span>
@@ -40,7 +38,6 @@
                 value="{{ $inputValue }}" 
                 data-task-id="{{ $task->id }}"
                 style="flex: 1; max-width: 300px;"
-                @disabled($task->deadline_at === null)
             >
             <button 
                 type="button" 
@@ -64,15 +61,47 @@ document.addEventListener('DOMContentLoaded', function() {
     const fieldId = '{{ $fieldId }}';
     if (!window.inlineFieldEditors) window.inlineFieldEditors = {};
     
+    // Function to update display value from form inputs
+    function updateDeadlineDisplay() {
+        const deadlineInput = document.getElementById('input-' + fieldId);
+        const viewValue = document.querySelector(`#inline-view-${fieldId} .inline-field-value`);
+        
+        if (!deadlineInput || !viewValue) return;
+        
+        const deadlineValue = deadlineInput.value;
+        if (!deadlineValue || deadlineValue === '') {
+            viewValue.textContent = 'no deadline';
+            return;
+        }
+        
+        // Convert datetime-local format (YYYY-MM-DDTHH:mm) to readable format
+        const date = new Date(deadlineValue);
+        if (isNaN(date.getTime())) {
+            viewValue.textContent = 'no deadline';
+            return;
+        }
+        
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        viewValue.textContent = 'deadline: ' + formattedDate;
+    }
+    
     window.inlineFieldEditors[fieldId] = new InlineFieldEditor(fieldId, {
         formatValue: function(value) {
-            if (!value || value === '') return 'Not set';
+            if (!value || value === '') return 'no deadline';
             
             // Convert datetime-local format (YYYY-MM-DDTHH:mm) to readable format
             const date = new Date(value);
-            if (isNaN(date.getTime())) return 'Not set';
+            if (isNaN(date.getTime())) return 'no deadline';
             
-            return date.toLocaleDateString('en-US', { 
+            const formattedDate = date.toLocaleDateString('en-US', { 
                 month: 'short', 
                 day: 'numeric', 
                 year: 'numeric',
@@ -80,8 +109,53 @@ document.addEventListener('DOMContentLoaded', function() {
                 minute: '2-digit',
                 hour12: true
             });
+            
+            return 'deadline: ' + formattedDate;
+        },
+        onSave: async function(newValue, oldValue, editor) {
+            const deadlineInput = document.getElementById('input-' + fieldId);
+            if (!deadlineInput) return false;
+            
+            const deadlineValue = deadlineInput.value || '';
+            const success = await TaskFieldSaver.saveField({{ $task->id }}, 'deadline_at', deadlineValue);
+            
+            if (success) {
+                setTimeout(function() {
+                    updateDeadlineDisplay();
+                }, 50);
+                return true;
+            }
+            return false;
         }
     });
+    
+    // Update display when deadline changes
+    const deadlineInput = document.getElementById('input-' + fieldId);
+    if (deadlineInput) {
+        deadlineInput.addEventListener('change', function() {
+            const editElement = document.getElementById('inline-edit-' + fieldId);
+            if (editElement && !editElement.classList.contains('d-none')) {
+                updateDeadlineDisplay();
+            }
+        });
+        deadlineInput.addEventListener('input', function() {
+            const editElement = document.getElementById('inline-edit-' + fieldId);
+            if (editElement && !editElement.classList.contains('d-none')) {
+                updateDeadlineDisplay();
+            }
+        });
+    }
+    
+    // Update display immediately on page load
+    updateDeadlineDisplay();
+    
+    // Also update when entering edit mode
+    const editBtn = document.querySelector(`#inline-view-${fieldId} .inline-field-edit-btn`);
+    if (editBtn) {
+        editBtn.addEventListener('click', function() {
+            setTimeout(updateDeadlineDisplay, 10);
+        });
+    }
     
     // Handle "Today" button
     const todayBtn = document.querySelector(`.btn-today[data-task-id="{{ $task->id }}"]`);
@@ -98,7 +172,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const input = document.getElementById('input-' + fieldId);
             if (input) {
                 input.value = datetimeValue;
-                input.disabled = false;
+                // Update display immediately
+                setTimeout(updateDeadlineDisplay, 10);
             }
         });
     }

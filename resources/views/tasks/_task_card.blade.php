@@ -47,6 +47,17 @@
                     required
                 />
                 
+                {{-- Description --}}
+                <x-inline-editable-field
+                    field-id="task-description-{{ $task->id }}"
+                    label="Description"
+                    value="{{ $task->description }}"
+                    name="description"
+                    type="textarea"
+                    rows="3"
+                    placeholder="No description"
+                />
+                
                 {{-- Universes Selection --}}
                 @php
                     $universesForInclude = $universes ?? \App\Models\Universe::orderBy('name')->get();
@@ -65,66 +76,26 @@
                     'fieldId' => 'estimated-time-' . $task->id
                 ])
                 
-                {{-- Description --}}
-                <x-inline-editable-field
-                    field-id="task-description-{{ $task->id }}"
-                    label="Description"
-                    value="{{ $task->description }}"
-                    name="description"
-                    type="textarea"
-                    rows="3"
-                    placeholder="No description"
-                />
-                
-                {{-- Recurring checkbox --}}
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; white-space: nowrap; font-size: 0.9em;">
-                        <input type="checkbox" id="recurring-checkbox-{{ $task->id }}" @checked($task->recurring_task_id !== null) data-task-id="{{ $task->id }}">
-                        Recurring
-                    </label>
-                </div>
-                
-                {{-- Recurring task dropdown (hidden by default if no recurring task) --}}
-                <div id="recurring-task-container-{{ $task->id }}" class="@if($task->recurring_task_id === null) d-none @endif" style="margin-bottom: 0.75rem;">
-                    <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em;">Linked Recurring Task:</label>
-                    <select name="recurring_task_id" style="padding: 0.35rem; max-width: 300px;">
-                        <option value="">— none —</option>
-                        @php
-                            $recurringTasksForEdit = $recurringTasks ?? \App\Models\RecurringTask::where('active', true)->get();
-                        @endphp
-                        @foreach ($recurringTasksForEdit as $rt)
-                            <option value="{{ $rt->id }}" @selected($task->recurring_task_id == $rt->id)>
-                                {{ $rt->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+                {{-- Recurring Task --}}
+                @include('tasks._inline_recurring_task', [
+                    'task' => $task,
+                    'recurringTasks' => $recurringTasks ?? null,
+                    'fieldId' => 'recurring-task-' . $task->id
+                ])
                 
                 {{-- JSON data for JavaScript --}}
                 <script type="application/json" id="universes-data-{{ $task->id }}">{!! json_encode(($universes ?? \App\Models\Universe::orderBy('name')->get())->pluck('name', 'id')) !!}</script>
                 <script type="application/json" id="universe-index-data-{{ $task->id }}">{!! json_encode($universeItems->count()) !!}</script>
                 
-                {{-- Deadline checkbox --}}
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; white-space: nowrap; font-size: 0.9em;">
-                        <input type="checkbox" id="deadline-checkbox-{{ $task->id }}" @checked($task->deadline_at !== null) data-task-id="{{ $task->id }}">
-                        Deadline
-                    </label>
-                </div>
-                
-                {{-- Deadline input (hidden by default if no deadline) --}}
-                <div id="deadline-container-{{ $task->id }}" class="@if($task->deadline_at === null) d-none @endif" style="margin-bottom: 0.75rem;">
-                    <label style="display: block; margin-bottom: 0.25rem; font-size: 0.9em;">Deadline:</label>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <input type="datetime-local" name="deadline_at" id="deadline-{{ $task->id }}" value="{{ $task->deadline_at ? $task->deadline_at->format('Y-m-d\TH:i') : '' }}" style="padding: 0.35rem; flex: 1; max-width: 300px;" data-task-id="{{ $task->id }}" @disabled($task->deadline_at === null)>
-                        <button type="button" class="btn-today" data-task-id="{{ $task->id }}" style="padding: 0.35rem 0.75rem; font-size: 0.85rem; white-space: nowrap;">Today</button>
-                    </div>
-                </div>
+                {{-- Deadline --}}
+                @include('tasks._inline_deadline', [
+                    'task' => $task,
+                    'fieldId' => 'deadline-' . $task->id
+                ])
                 
                 <input type="hidden" name="status" value="{{ $task->status ?? 'open' }}">
                 
                 <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    <button type="submit">Save</button>
                     @if($task->isRecurring() && $task->completed_at === null && $task->skipped_at === null)
                         <button type="button" class="skip-task-btn" data-task-id="{{ $task->id }}">Skip</button>
                     @endif
@@ -174,7 +145,45 @@
             </div>
         </div>
         
-        {{-- JavaScript is now in TaskCardEditor.js --}}
+        {{-- Initialize inline editable fields with individual save functionality --}}
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const taskId = {{ $task->id }};
+            
+            // Wait a bit for auto-initialization to complete
+            setTimeout(function() {
+                // Name field
+                const nameFieldId = 'task-name-' + taskId;
+                if (window.inlineFieldEditors && window.inlineFieldEditors[nameFieldId]) {
+                    const nameEditor = window.inlineFieldEditors[nameFieldId];
+                    nameEditor.options.onSave = async function(newValue, oldValue, editor) {
+                        const success = await TaskFieldSaver.saveField(taskId, 'name', newValue);
+                        if (success) {
+                            editor.updateDisplayValue(newValue);
+                            editor.originalValue = newValue;
+                            return true;
+                        }
+                        return false;
+                    };
+                }
+                
+                // Description field
+                const descFieldId = 'task-description-' + taskId;
+                if (window.inlineFieldEditors && window.inlineFieldEditors[descFieldId]) {
+                    const descEditor = window.inlineFieldEditors[descFieldId];
+                    descEditor.options.onSave = async function(newValue, oldValue, editor) {
+                        const success = await TaskFieldSaver.saveField(taskId, 'description', newValue);
+                        if (success) {
+                            editor.updateDisplayValue(newValue);
+                            editor.originalValue = newValue;
+                            return true;
+                        }
+                        return false;
+                    };
+                }
+            }, 100);
+        });
+        </script>
     @endif
 </li>
 

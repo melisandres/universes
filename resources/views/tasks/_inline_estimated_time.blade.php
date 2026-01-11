@@ -142,12 +142,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 return numValue + ' minutes';
             }
         },
-        onSave: function(newValue, oldValue, editor) {
-            // Update display from current form state
-            setTimeout(function() {
-                updateEstimatedTimeDisplay();
-            }, 50);
-            return true; // Allow UI update
+        onSave: async function(newValue, oldValue, editor) {
+            const timeInput = document.getElementById('input-' + fieldId);
+            const minutesRadio = document.getElementById('time-unit-minutes-' + fieldId);
+            const hoursRadio = document.getElementById('time-unit-hours-' + fieldId);
+            const unit = hoursRadio && hoursRadio.checked ? 'hours' : 'minutes';
+            
+            if (!timeInput || !timeInput.value) {
+                // Clear estimated time
+                const success = await TaskFieldSaver.saveField({{ $task->id }}, 'estimated_time', '', { timeUnit: 'hours' });
+                if (success) {
+                    setTimeout(function() {
+                        updateEstimatedTimeDisplay();
+                    }, 50);
+                    return true;
+                }
+                return false;
+            }
+            
+            const timeValue = parseFloat(timeInput.value);
+            if (isNaN(timeValue)) {
+                return false;
+            }
+            
+            const success = await TaskFieldSaver.saveField({{ $task->id }}, 'estimated_time', timeValue, { timeUnit: unit });
+            
+            if (success) {
+                setTimeout(function() {
+                    updateEstimatedTimeDisplay();
+                }, 50);
+                return true;
+            }
+            return false;
         }
     });
     

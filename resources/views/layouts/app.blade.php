@@ -22,6 +22,7 @@
     @yield('content')
     
     <script src="{{ asset('js/InlineFieldEditor.js') }}"></script>
+    <script src="{{ asset('js/TaskFieldSaver.js') }}"></script>
     <script src="{{ asset('js/TaskCardEditor.js') }}"></script>
     @stack('scripts')
 </body>
