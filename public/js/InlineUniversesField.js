@@ -258,12 +258,12 @@ class InlineUniversesField {
         
         // Also handle remove universe buttons using event delegation
         if (this.elements.container) {
-            this.elements.container.addEventListener('click', (e) => {
+            this._containerClickHandler = (e) => {
                 const removeBtn = e.target.closest('.remove-universe-btn[data-task-id]');
                 if (removeBtn && removeBtn.dataset.taskId === this.taskId.toString()) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('InlineUniversesField: Remove universe button clicked via delegation');
+                    Logger.debug('InlineUniversesField: Remove universe button clicked via delegation');
                     const row = removeBtn.closest('.universe-item-row');
                     if (row) {
                         row.remove();
@@ -271,7 +271,8 @@ class InlineUniversesField {
                         this.updateDisplay();
                     }
                 }
-            });
+            };
+            this.elements.container.addEventListener('click', this._containerClickHandler);
         }
     }
     
@@ -510,7 +511,7 @@ class InlineUniversesField {
             formData.append('_method', 'PUT');
         }
         
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const csrfToken = DOMUtils.getCSRFToken();
         if (!csrfToken) return false;
         
         try {
@@ -524,18 +525,19 @@ class InlineUniversesField {
                 body: formData
             });
             
-            if (response.redirected) return false;
+            const result = await ErrorHandler.handleResponse(response, {
+                defaultMessage: 'Error updating universes'
+            });
             
-            const data = await response.json();
+            if (!result.success) {
+                return false;
+            }
             
-            if (!response.ok || !data.success) {
-                let errorMessage = 'Error updating universes';
-                if (data.errors) {
-                    errorMessage = Object.values(data.errors).flat().join('\n');
-                } else if (data.message) {
-                    errorMessage = data.message;
-                }
-                alert('Error: ' + errorMessage);
+            if (!result.data.success) {
+                ErrorHandler.handleError(new Error('Universe update failed'), {
+                    context: 'updating universes',
+                    showAlert: true
+                });
                 return false;
             }
             
@@ -546,10 +548,61 @@ class InlineUniversesField {
             
             return true;
         } catch (error) {
-            console.error('Error saving universes:', error);
-            alert('Error: ' + (error.message || 'Error updating universes'));
+            ErrorHandler.handleFetchError(error, {
+                defaultMessage: 'Error updating universes'
+            });
             return false;
         }
+    }
+
+    /**
+     * Cleanup method to prevent memory leaks
+     * Removes event listeners and clears references
+     */
+    destroy() {
+        // Remove document-level event delegation handlers
+        if (this._addButtonClickHandler) {
+            document.removeEventListener('click', this._addButtonClickHandler, true);
+            this._addButtonClickHandler = null;
+        }
+
+        if (this._testHandler) {
+            document.removeEventListener('click', this._testHandler, true);
+            this._testHandler = null;
+        }
+
+        // Remove container listeners
+        if (this.elements.container) {
+            if (this._containerChangeHandler) {
+                this.elements.container.removeEventListener('change', this._containerChangeHandler);
+                this._containerChangeHandler = null;
+            }
+            if (this._containerClickHandler) {
+                this.elements.container.removeEventListener('click', this._containerClickHandler);
+                this._containerClickHandler = null;
+            }
+        }
+
+        // Remove edit button listener
+        const editBtn = document.querySelector(`#inline-view-${this.fieldId} .inline-field-edit-btn`);
+        if (editBtn && this._editBtnClickHandler) {
+            editBtn.removeEventListener('click', this._editBtnClickHandler);
+            this._editBtnClickHandler = null;
+        }
+
+        // Clean up InlineFieldEditor if it exists
+        if (window.inlineFieldEditors && window.inlineFieldEditors[this.fieldId]) {
+            const editor = window.inlineFieldEditors[this.fieldId];
+            if (editor && typeof editor.destroy === 'function') {
+                editor.destroy();
+            }
+        }
+
+        // Clear element references
+        this.elements = null;
+        this.config = null;
+
+        Logger.debug('InlineUniversesField: Cleaned up', this.fieldId);
     }
 }
 

@@ -3,8 +3,20 @@
  * 
  * This class handles the toggle between view and edit modes for inline editable fields.
  * It can work with individual fields or be integrated into a larger form context.
+ * 
+ * @class
  */
 class InlineFieldEditor {
+    /**
+     * Create an InlineFieldEditor instance
+     * @param {string} fieldId - The unique field identifier (e.g., 'task-name-123')
+     * @param {Object} [options={}] - Configuration options
+     * @param {Function} [options.onSave] - Callback when save is clicked: (newValue, oldValue, editor) => Promise<boolean>|boolean
+     * @param {Function} [options.onCancel] - Callback when cancel is clicked: (editor) => void
+     * @param {boolean} [options.autoSave=false] - Auto-save on blur/enter
+     * @param {Function} [options.validate] - Validation function: (value) => boolean|string
+     * @param {Function} [options.formatValue] - Format value for display: (value) => string
+     */
     constructor(fieldId, options = {}) {
         this.fieldId = fieldId;
         this.options = {
@@ -46,6 +58,10 @@ class InlineFieldEditor {
         }
     }
     
+    /**
+     * Attach event listeners to the field elements
+     * @returns {void}
+     */
     attachEventListeners() {
         // Edit button - toggle between edit and view mode (acts as cancel when in edit mode)
         // NOTE: We're using event delegation now, so we don't attach individual listeners
@@ -149,6 +165,10 @@ class InlineFieldEditor {
         this.editElement.classList.add('d-none');
     }
     
+    /**
+     * Check if the field is currently in edit mode
+     * @returns {boolean} - True if in edit mode, false otherwise
+     */
     isEditing() {
         return this.editElement && !this.editElement.classList.contains('d-none');
     }
@@ -281,6 +301,49 @@ class InlineFieldEditor {
     
     getValue() {
         return this.getInputValue();
+    }
+
+    /**
+     * Cleanup method to prevent memory leaks
+     * Removes event listeners and clears references
+     */
+    destroy() {
+        // Remove save button listener
+        const saveBtn = this.editElement?.querySelector('.inline-field-save-btn');
+        if (saveBtn && this._saveBtnHandler) {
+            saveBtn.removeEventListener('click', this._saveBtnHandler);
+            this._saveBtnHandler = null;
+        }
+
+        // Remove input element listeners
+        if (this.inputElement) {
+            if (this._keydownHandler) {
+                this.inputElement.removeEventListener('keydown', this._keydownHandler);
+                this._keydownHandler = null;
+            }
+            if (this._blurHandler) {
+                this.inputElement.removeEventListener('blur', this._blurHandler);
+                this._blurHandler = null;
+            }
+            if (this._enterHandler) {
+                this.inputElement.removeEventListener('keydown', this._enterHandler);
+                this._enterHandler = null;
+            }
+        }
+
+        // Clear references
+        this.viewElement = null;
+        this.editElement = null;
+        this.inputElement = null;
+        this.valueElement = null;
+        this.options = null;
+
+        // Remove from global registry
+        if (window.inlineFieldEditors && window.inlineFieldEditors[this.fieldId]) {
+            delete window.inlineFieldEditors[this.fieldId];
+        }
+
+        Logger.debug('InlineFieldEditor: Cleaned up', this.fieldId);
     }
 }
 

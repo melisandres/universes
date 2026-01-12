@@ -14,9 +14,9 @@ class UniverseFieldSaver {
      */
     static async saveField(universeId, fieldName, fieldValue) {
         // Get CSRF token
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const csrfToken = DOMUtils.getCSRFToken();
         if (!csrfToken) {
-            console.error('CSRF token not found');
+            Logger.error('UniverseFieldSaver: CSRF token not found');
             return false;
         }
 

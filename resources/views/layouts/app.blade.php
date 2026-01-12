@@ -28,6 +28,19 @@
     
     {{-- Utility classes --}}
     <script src="{{ asset('js/TimeHelper.js') }}"></script>
+    <script src="{{ asset('js/Logger.js') }}"></script>
+    <script src="{{ asset('js/ErrorHandler.js') }}"></script>
+    <script src="{{ asset('js/FieldConstants.js') }}"></script>
+    <script src="{{ asset('js/FieldUtils.js') }}"></script>
+    <script src="{{ asset('js/DOMUtils.js') }}"></script>
+    
+    {{-- Set environment for Logger (Laravel APP_ENV) --}}
+    <script>
+        window.APP_ENV = '{{ config('app.env') }}';
+    </script>
+    
+    {{-- State manager (centralized state management) --}}
+    <script src="{{ asset('js/StateManager.js') }}"></script>
     
     {{-- Main initialization (sets up registries) --}}
     <script src="{{ asset('js/main.js') }}"></script>
@@ -39,11 +52,16 @@
     <script src="{{ asset('js/InlineDeadlineField.js') }}"></script>
     <script src="{{ asset('js/InlineLogTimeField.js') }}"></script>
     
+    {{-- Dependency manager (for proper dependency checking) - load after field classes --}}
+    <script src="{{ asset('js/DependencyManager.js') }}"></script>
+    
     {{-- Task field initializer (initializes all field classes) --}}
     <script src="{{ asset('js/TaskFieldInitializer.js') }}"></script>
     
-    {{-- Diagnostics (comprehensive logging) - load after all field classes --}}
+    {{-- Diagnostics (comprehensive logging) - only in development --}}
+    @if(config('app.env') === 'local' || config('app.env') === 'development')
     <script src="{{ asset('js/Diagnostics.js') }}"></script>
+    @endif
     
     {{-- Task card editor (may use registries from main.js) --}}
     <script src="{{ asset('js/TaskCardEditor.js') }}"></script>

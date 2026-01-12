@@ -26,7 +26,7 @@ class AddTaskCardManager {
             
             const universeId = parseInt(addTaskCard.dataset.universeId, 10);
             if (!universeId) {
-                console.error('AddTaskCardManager: Add task card missing universe-id attribute');
+                Logger.error('AddTaskCardManager: Add task card missing universe-id attribute');
                 return;
             }
             
@@ -67,8 +67,10 @@ class AddTaskCardManager {
             await this.initializeTaskCard(newTaskCard, taskId);
             
         } catch (error) {
-            console.error('AddTaskCardManager: Error creating task:', error);
-            alert('Error creating task: ' + error.message);
+            ErrorHandler.handleError(error, {
+                context: 'creating task',
+                showAlert: true
+            });
         } finally {
             // Re-enable the card
             addTaskCard.style.pointerEvents = '';
@@ -145,43 +147,7 @@ class AddTaskCardManager {
      * @returns {number|null} The task ID or null if not found
      */
     extractTaskId(taskCard) {
-        // Try multiple selectors to find the task ID
-        // The most reliable is the form, as it's always present in edit mode
-        const taskEditForm = taskCard.querySelector('.task-edit-form-simple[data-task-id]');
-        const taskEditMode = taskCard.querySelector('.task-edit-mode[data-task-id]');
-        const taskNameClickable = taskCard.querySelector('.task-name-clickable[data-task-id]');
-        const addUniverseBtn = taskCard.querySelector('.add-universe-btn[data-task-id]');
-        
-        // Try form first (most reliable)
-        if (taskEditForm && taskEditForm.dataset.taskId) {
-            const taskId = parseInt(taskEditForm.dataset.taskId, 10);
-            console.log('AddTaskCardManager: Extracted task ID from form', taskId);
-            return taskId;
-        }
-        
-        // Try edit mode
-        if (taskEditMode && taskEditMode.dataset.taskId) {
-            const taskId = parseInt(taskEditMode.dataset.taskId, 10);
-            console.log('AddTaskCardManager: Extracted task ID from edit mode', taskId);
-            return taskId;
-        }
-        
-        // Try task name
-        if (taskNameClickable && taskNameClickable.dataset.taskId) {
-            const taskId = parseInt(taskNameClickable.dataset.taskId, 10);
-            console.log('AddTaskCardManager: Extracted task ID from task name', taskId);
-            return taskId;
-        }
-        
-        // Try add universe button as fallback
-        if (addUniverseBtn && addUniverseBtn.dataset.taskId) {
-            const taskId = parseInt(addUniverseBtn.dataset.taskId, 10);
-            console.log('AddTaskCardManager: Extracted task ID from add universe button', taskId);
-            return taskId;
-        }
-        
-        console.error('AddTaskCardManager: Could not extract task ID from task card', taskCard);
-        return null;
+        return DOMUtils.extractTaskIdFromCard(taskCard);
     }
     
     /**
@@ -190,20 +156,22 @@ class AddTaskCardManager {
      * @param {number} taskId - The task ID
      */
     async initializeTaskCard(taskCard, taskId) {
-        // Wait a bit for the HTML to be fully inserted into the DOM
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Wait for the HTML to be fully inserted into the DOM
+        // Use a small delay to ensure DOM is ready (MutationObserver would be overkill here)
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         
         // Initialize field-specific classes (must be before TaskCardEditor)
         // This returns the actual task ID from the HTML (in case there's a mismatch)
         const actualTaskId = this.initializeFieldClasses(taskCard, taskId);
         
-        // Wait a bit for field classes to initialize
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for field classes to be initialized
+        // Check if fields are actually initialized rather than using arbitrary delay
+        await this.waitForFieldsInitialized(taskCard, actualTaskId);
         
         // Wait for TaskCardEditor to be available (with timeout)
         const TaskCardEditorClass = await this.waitForTaskCardEditor();
         if (!TaskCardEditorClass) {
-            console.error('AddTaskCardManager: TaskCardEditor not available after waiting');
+            Logger.error('AddTaskCardManager: TaskCardEditor not available after waiting');
             return;
         }
         
@@ -219,7 +187,8 @@ class AddTaskCardManager {
         // Ensure all inline fields start in view mode (not edit mode)
         // This must be AFTER expanding the task card, because expansion might change field states
         // Individual fields should start collapsed even though the task card is expanded
-        setTimeout(() => {
+        // Use requestAnimationFrame to ensure DOM updates are complete
+        requestAnimationFrame(() => {
             this.ensureFieldsInViewMode(taskCard, actualTaskId);
             
             // Set up custom save handlers AFTER fields are initialized and in view mode
@@ -233,7 +202,39 @@ class AddTaskCardManager {
             
             // Open and focus the name field for immediate editing
             this.openAndFocusNameField(actualTaskId);
-        }, 150);
+        });
+    }
+    
+    /**
+     * Wait for fields to be initialized for a task
+     * @param {HTMLElement} taskCard - The task card element
+     * @param {number} taskId - The task ID
+     * @param {number} timeout - Maximum time to wait in ms
+     * @returns {Promise<boolean>} - True if fields are initialized
+     */
+    async waitForFieldsInitialized(taskCard, taskId, timeout = 2000) {
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < timeout) {
+            // Check if key fields are initialized
+            const nameFieldId = `task-name-${taskId}`;
+            const universesFieldId = `universes-${taskId}`;
+            
+            const nameInitialized = !!window.inlineFieldEditors?.[nameFieldId];
+            const universesInitialized = !!window.inlineFieldEditors?.[universesFieldId];
+            
+            // If both are initialized, we're good
+            if (nameInitialized && universesInitialized) {
+                Logger.debug('AddTaskCardManager: Fields initialized', { taskId, nameInitialized, universesInitialized });
+                return true;
+            }
+            
+            // Wait a bit before checking again
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        Logger.warn('AddTaskCardManager: Fields not fully initialized after timeout', { taskId, timeout });
+        return false;
     }
     
     /**
@@ -328,7 +329,7 @@ class AddTaskCardManager {
      * @param {number} taskId - The task ID
      */
     initializeFieldClasses(taskCard, taskId) {
-        console.log('AddTaskCardManager: Initializing field classes', { 
+        Logger.debug('AddTaskCardManager: Initializing field classes', { 
             taskCard: taskCard, 
             extractedTaskId: taskId
         });
@@ -341,23 +342,23 @@ class AddTaskCardManager {
         const actualTaskId = taskIdFromForm ? parseInt(taskIdFromForm, 10) : taskId;
         
         if (actualTaskId !== taskId) {
-            console.warn('AddTaskCardManager: Task ID mismatch, using form task ID', { 
+            Logger.warn('AddTaskCardManager: Task ID mismatch, using form task ID', { 
                 extracted: taskId, 
                 form: taskIdFromForm,
                 using: actualTaskId
             });
         } else {
-            console.log('AddTaskCardManager: Task ID verified', { taskId: actualTaskId });
+            Logger.debug('AddTaskCardManager: Task ID verified', { taskId: actualTaskId });
         }
         
         // Use TaskFieldInitializer to initialize all field classes
         // This ensures consistent initialization for both page load and dynamically added content
         // TaskFieldInitializer now handles both complex fields AND simple fields (name/description)
         if (window.TaskFieldInitializer) {
-            console.log('AddTaskCardManager: Using TaskFieldInitializer for task', actualTaskId);
+            Logger.debug('AddTaskCardManager: Using TaskFieldInitializer for task', actualTaskId);
             window.TaskFieldInitializer.initializeTaskFields(actualTaskId, taskCard);
         } else {
-            console.warn('AddTaskCardManager: TaskFieldInitializer not available, falling back to manual initialization');
+            Logger.warn('AddTaskCardManager: TaskFieldInitializer not available, falling back to manual initialization');
             // Fallback to manual initialization if TaskFieldInitializer isn't loaded
             this.initializeFieldClassesManually(taskCard, actualTaskId);
             
@@ -441,16 +442,16 @@ class AddTaskCardManager {
      */
     initializeTaskCardEditor(taskId, TaskCardEditorClass) {
         if (!TaskCardEditorClass) {
-            console.error('AddTaskCardManager: TaskCardEditor class not provided');
+            Logger.error('AddTaskCardManager: TaskCardEditor class not provided');
             return;
         }
         
         if (window.taskCardEditors && window.taskCardEditors[taskId]) {
-            console.warn('AddTaskCardManager: TaskCardEditor already exists for task', taskId);
+            Logger.warn('AddTaskCardManager: TaskCardEditor already exists for task', taskId);
             return;
         }
         
-        console.log('AddTaskCardManager: Initializing TaskCardEditor', taskId);
+        Logger.debug('AddTaskCardManager: Initializing TaskCardEditor', taskId);
         
         // Initialize TaskCardEditor
         if (!window.taskCardEditors) {
@@ -464,12 +465,12 @@ class AddTaskCardManager {
      * @param {number} taskId - The task ID
      */
     setupSaveHandlers(taskId) {
-        console.log('AddTaskCardManager: Setting up save handlers for task', taskId);
+        Logger.debug('AddTaskCardManager: Setting up save handlers for task', taskId);
         
         const nameFieldId = 'task-name-' + taskId;
         if (window.inlineFieldEditors && window.inlineFieldEditors[nameFieldId]) {
             const nameEditor = window.inlineFieldEditors[nameFieldId];
-            console.log('AddTaskCardManager: Found name editor', nameFieldId, nameEditor);
+            Logger.debug('AddTaskCardManager: Found name editor', nameFieldId, nameEditor);
             
             // Add Enter key handler to save and exit edit mode
             // Remove any existing Enter handler first to avoid duplicates
@@ -484,7 +485,7 @@ class AddTaskCardManager {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('AddTaskCardManager: Enter key pressed, calling handleSave');
+                        Logger.debug('AddTaskCardManager: Enter key pressed, calling handleSave');
                         nameEditor.handleSave();
                     }
                 };
@@ -492,19 +493,19 @@ class AddTaskCardManager {
                 // Store handler reference for potential cleanup
                 nameEditor._enterHandler = enterHandler;
             } else {
-                console.warn('AddTaskCardManager: Name editor input element not found');
+                Logger.warn('AddTaskCardManager: Name editor input element not found');
             }
             
             // Set the onSave callback
             nameEditor.options.onSave = async function(newValue, oldValue, editor) {
-                console.log('AddTaskCardManager: Name onSave called', { newValue, oldValue, taskId });
+                Logger.debug('AddTaskCardManager: Name onSave called', { newValue, oldValue, taskId });
                 
                 // Get TaskFieldSaver from window (should be available since it's loaded in layout)
                 const TaskFieldSaverClass = window.TaskFieldSaver;
                 
                 if (TaskFieldSaverClass && TaskFieldSaverClass.saveField) {
                     const success = await TaskFieldSaverClass.saveField(taskId, 'name', newValue);
-                    console.log('AddTaskCardManager: Name save result', success);
+                    Logger.debug('AddTaskCardManager: Name save result', success);
                     if (success) {
                         editor.updateDisplayValue(newValue);
                         editor.originalValue = newValue;
@@ -513,9 +514,9 @@ class AddTaskCardManager {
                         const taskNameElement = document.querySelector(`.task-name-clickable[data-task-id="${taskId}"]`);
                         if (taskNameElement) {
                             taskNameElement.textContent = newValue;
-                            console.log('AddTaskCardManager: Updated task card view name');
+                            Logger.debug('AddTaskCardManager: Updated task card view name');
                         } else {
-                            console.warn('AddTaskCardManager: Task name element not found for', taskId);
+                            Logger.warn('AddTaskCardManager: Task name element not found for', taskId);
                         }
                         
                         return true;
@@ -530,15 +531,15 @@ class AddTaskCardManager {
                 return false;
             };
             
-            console.log('AddTaskCardManager: Name editor onSave callback set', nameEditor.options.onSave);
+            Logger.debug('AddTaskCardManager: Name editor onSave callback set', nameEditor.options.onSave);
         } else {
-            console.warn('AddTaskCardManager: Name editor not found', nameFieldId);
+            Logger.warn('AddTaskCardManager: Name editor not found', nameFieldId);
         }
         
         const descFieldId = 'task-description-' + taskId;
         if (window.inlineFieldEditors && window.inlineFieldEditors[descFieldId]) {
             const descEditor = window.inlineFieldEditors[descFieldId];
-            console.log('AddTaskCardManager: Found description editor', descFieldId, descEditor);
+            Logger.debug('AddTaskCardManager: Found description editor', descFieldId, descEditor);
             
             // Add Ctrl+Enter (Cmd+Enter on Mac) handler to save and exit edit mode
             // For textareas, Enter creates new lines, so we use Ctrl+Enter to save
@@ -553,7 +554,7 @@ class AddTaskCardManager {
                     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log('AddTaskCardManager: Ctrl+Enter pressed in description, calling handleSave');
+                        Logger.debug('AddTaskCardManager: Ctrl+Enter pressed in description, calling handleSave');
                         descEditor.handleSave();
                     }
                     // Regular Enter is allowed for new lines in textarea
@@ -561,19 +562,19 @@ class AddTaskCardManager {
                 descEditor.inputElement.addEventListener('keydown', enterHandler);
                 descEditor._enterHandler = enterHandler;
             } else {
-                console.warn('AddTaskCardManager: Description editor input element not found');
+                Logger.warn('AddTaskCardManager: Description editor input element not found');
             }
             
             // Set the onSave callback
             descEditor.options.onSave = async function(newValue, oldValue, editor) {
-                console.log('AddTaskCardManager: Description onSave called', { newValue, oldValue, taskId });
+                Logger.debug('AddTaskCardManager: Description onSave called', { newValue, oldValue, taskId });
                 
                 // Get TaskFieldSaver from window (should be available since it's loaded in layout)
                 const TaskFieldSaverClass = window.TaskFieldSaver;
                 
                 if (TaskFieldSaverClass && TaskFieldSaverClass.saveField) {
                     const success = await TaskFieldSaverClass.saveField(taskId, 'description', newValue);
-                    console.log('AddTaskCardManager: Description save result', success);
+                    Logger.debug('AddTaskCardManager: Description save result', success);
                     if (success) {
                         editor.updateDisplayValue(newValue);
                         editor.originalValue = newValue;
@@ -589,9 +590,9 @@ class AddTaskCardManager {
                 return false;
             };
             
-            console.log('AddTaskCardManager: Description editor onSave callback set', descEditor.options.onSave);
+            Logger.debug('AddTaskCardManager: Description editor onSave callback set', descEditor.options.onSave);
         } else {
-            console.warn('AddTaskCardManager: Description editor not found', descFieldId);
+            Logger.warn('AddTaskCardManager: Description editor not found', descFieldId);
         }
     }
     
@@ -600,7 +601,7 @@ class AddTaskCardManager {
      * @param {number} taskId - The task ID
      */
     setSkipButtonVisibility(taskId) {
-        const skipBtn = document.querySelector(`.skip-task-btn[data-task-id="${taskId}"]`);
+        const skipBtn = DOMUtils.findSkipTaskButton(taskId);
         if (!skipBtn) return;
         
         // Get values from data attributes

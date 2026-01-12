@@ -3,14 +3,17 @@
  * 
  * This utility provides a reusable function to save individual task fields
  * to the server via AJAX, used by inline editable fields.
+ * 
+ * @class
  */
 class TaskFieldSaver {
     /**
      * Save a single task field to the server
      * @param {number} taskId - The task ID
-     * @param {string} fieldName - The field name (e.g., 'name', 'description')
-     * @param {any} fieldValue - The field value to save
-     * @param {Object} options - Additional options
+     * @param {string} fieldName - The field name (e.g., 'name', 'description', 'universe_ids', 'estimated_time', 'deadline_at', 'recurring_task_id')
+     * @param {string|number|Array<number>} fieldValue - The field value to save
+     * @param {Object} [options={}] - Additional options
+     * @param {string} [options.timeUnit='hours'] - Time unit for estimated_time field ('minutes' or 'hours')
      * @returns {Promise<boolean>} - Returns true on success, false on failure
      */
     static async saveField(taskId, fieldName, fieldValue, options = {}) {
@@ -21,9 +24,9 @@ class TaskFieldSaver {
         }
 
         // Get CSRF token
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        const csrfToken = DOMUtils.getCSRFToken();
         if (!csrfToken) {
-            console.error('CSRF token not found');
+            Logger.error('TaskFieldSaver: CSRF token not found');
             return false;
         }
 
@@ -111,33 +114,27 @@ class TaskFieldSaver {
                 body: formData
             });
 
-            if (response.redirected) {
-                console.error('Server returned redirect instead of JSON!');
+            const result = await ErrorHandler.handleResponse(response, {
+                defaultMessage: 'Error updating task'
+            });
+
+            if (!result.success) {
                 return false;
             }
 
-            const data = await response.json();
-
-            if (!response.ok) {
-                let errorMessage = 'Error updating task';
-                if (data.errors) {
-                    errorMessage = Object.values(data.errors).flat().join('\n');
-                } else if (data.message) {
-                    errorMessage = data.message;
-                }
-                alert('Error: ' + errorMessage);
-                return false;
-            }
-
-            if (data.success) {
+            if (result.data.success) {
                 return true;
             } else {
-                alert('Error updating task');
+                ErrorHandler.handleError(new Error('Task update failed'), {
+                    context: 'updating task',
+                    showAlert: true
+                });
                 return false;
             }
         } catch (error) {
-            console.error('Fetch error:', error);
-            alert('Error: ' + (error.message || 'Error updating task'));
+            ErrorHandler.handleFetchError(error, {
+                defaultMessage: 'Error updating task'
+            });
             return false;
         }
     }

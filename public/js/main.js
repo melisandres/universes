@@ -12,28 +12,27 @@
     
     /**
      * Initialize global registries
+     * Now uses StateManager for centralized state management
      */
     function initializeRegistries() {
-        // Initialize inline field editors registry if it doesn't exist
-        if (!window.inlineFieldEditors) {
-            window.inlineFieldEditors = {};
-        }
+        // StateManager is already initialized, but ensure registries exist
+        // This maintains backward compatibility
+        StateManager.ensureInlineFieldEditors();
+        StateManager.ensureTaskCardEditors();
         
-        // Initialize task card editors registry if it doesn't exist
-        if (!window.taskCardEditors) {
-            window.taskCardEditors = {};
-        }
+        Logger.debug('main.js: Registries initialized via StateManager');
     }
     
     /**
      * Main initialization function
      */
     function init() {
-        // Initialize registries
+        // Initialize registries (via StateManager)
         initializeRegistries();
         
         // Note: Dependencies (InlineFieldEditor, TaskFieldSaver, etc.) are loaded
         // in the layout before main.js, so they're guaranteed to be available
+        // StateManager is loaded before main.js, so it's also available
     }
     
     // Initialize when DOM is ready

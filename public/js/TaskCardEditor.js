@@ -84,45 +84,55 @@ class TaskCardEditor {
         }
     
     attachEventListeners() {
+        // Store handlers for cleanup
+        this._handlers = {};
+
         // Edit/Cancel toggle - task name is clickable
         if (this.elements.taskName) {
-            this.elements.taskName.addEventListener('click', () => this.toggleEditMode(true));
+            this._handlers.taskNameClick = () => this.toggleEditMode(true);
+            this.elements.taskName.addEventListener('click', this._handlers.taskNameClick);
         }
         // Close button (X) in edit mode header
         const closeBtn = document.querySelector(`.task-close-edit-btn[data-task-id="${this.taskId}"]`);
         if (closeBtn) {
-            closeBtn.addEventListener('click', () => this.toggleEditMode(false));
+            this._handlers.closeBtnClick = () => this.toggleEditMode(false);
+            closeBtn.addEventListener('click', this._handlers.closeBtnClick);
         }
 
             // Complete checkbox with delay
             if (this.elements.completeCheckbox) {
                 this.completeTimeout = null;
-                this.elements.completeCheckbox.addEventListener('change', (e) => this.handleCompleteCheckbox(e));
+                this._handlers.completeCheckboxChange = (e) => this.handleCompleteCheckbox(e);
+                this.elements.completeCheckbox.addEventListener('change', this._handlers.completeCheckboxChange);
             }
         
         // Deadline input change - update status pill
         if (this.elements.deadlineInput) {
-            this.elements.deadlineInput.addEventListener('change', () => this.updateStatusPillFromDeadline());
-            this.elements.deadlineInput.addEventListener('input', () => this.updateStatusPillFromDeadline());
+            this._handlers.deadlineChange = () => this.updateStatusPillFromDeadline();
+            this._handlers.deadlineInput = () => this.updateStatusPillFromDeadline();
+            this.elements.deadlineInput.addEventListener('change', this._handlers.deadlineChange);
+            this.elements.deadlineInput.addEventListener('input', this._handlers.deadlineInput);
         }
         
         // Today button (skip if InlineDeadlineField is handling it)
         const todayBtn = document.querySelector(`.btn-today[data-task-id="${this.taskId}"]`);
         if (todayBtn && !todayBtn.closest('.inline-editable-field')) {
-            todayBtn.addEventListener('click', () => {
+            this._handlers.todayBtnClick = () => {
                 this.setDeadlineToday();
                 this.updateStatusPillFromDeadline();
-            });
+            };
+            todayBtn.addEventListener('click', this._handlers.todayBtnClick);
         }
         
         // Universe add/remove buttons (using event delegation)
         // Skip if InlineUniversesField is handling it (for inline editable fields)
         if (this.elements.universesContainer && !this.elements.universesContainer.closest('.inline-editable-field')) {
-            this.elements.universesContainer.addEventListener('click', (e) => {
+            this._handlers.universesContainerClick = (e) => {
                 if (e.target.classList.contains('remove-universe-btn')) {
                     this.removeUniverseRow(e.target);
                 }
-            });
+            };
+            this.elements.universesContainer.addEventListener('click', this._handlers.universesContainerClick);
         }
         
             // Skip add universe button if InlineUniversesField is handling it

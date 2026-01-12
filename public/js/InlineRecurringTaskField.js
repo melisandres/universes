@@ -35,12 +35,12 @@ class InlineRecurringTaskField {
     
     init() {
         if (!this.elements.viewElement || !this.elements.editElement || !this.elements.inputElement) {
-            console.warn(`InlineRecurringTaskField: Missing elements for field ${this.fieldId}`);
+            Logger.warn(`InlineRecurringTaskField: Missing elements for field ${this.fieldId}`);
             return;
         }
         
         if (!this.elements.selectElement) {
-            console.warn(`InlineRecurringTaskField: Select element not found for task ${this.taskId}`);
+            Logger.warn(`InlineRecurringTaskField: Select element not found for task ${this.taskId}`);
             return;
         }
         
@@ -48,6 +48,7 @@ class InlineRecurringTaskField {
         this.setupEventListeners();
         this.updateDisplay();
         this.updateSkipButton(); // Initialize skip button visibility
+        this.updateRecurringIcon(); // Initialize recurring icon
     }
     
     /**
@@ -139,22 +140,87 @@ class InlineRecurringTaskField {
         if (!this.elements.selectElement) return false;
         
         const selectedValue = this.elements.selectElement.value || '';
-        console.log('InlineRecurringTaskField: Saving recurring task', { taskId: this.taskId, selectedValue });
+        Logger.debug('InlineRecurringTaskField: Saving recurring task', { taskId: this.taskId, selectedValue });
         const success = await TaskFieldSaver.saveField(this.taskId, 'recurring_task_id', selectedValue);
         
         if (success) {
-            console.log('InlineRecurringTaskField: Save successful, updating display');
+            Logger.debug('InlineRecurringTaskField: Save successful, updating display');
             // Update display immediately and after a short delay to ensure DOM is ready
             this.updateDisplay();
+            this.updateRecurringIcon();
             setTimeout(() => {
                 this.updateDisplay();
                 this.updateSkipButton();
+                this.updateRecurringIcon();
             }, 100);
             return true;
         }
         
-        console.warn('InlineRecurringTaskField: Save failed');
+        Logger.warn('InlineRecurringTaskField: Save failed');
         return false;
+    }
+    
+    /**
+     * Update the recurring icon in the collapsed task card view
+     */
+    updateRecurringIcon() {
+        if (!this.taskId) return;
+        
+        // Find the task view element
+        const taskView = document.getElementById(`task-view-${this.taskId}`);
+        if (!taskView) return;
+        
+        // Find the recurring icon and placeholder
+        const recurringIcon = taskView.querySelector('.recurring-icon');
+        const recurringIconPlaceholder = taskView.querySelector('.recurring-icon-placeholder');
+        
+        // Determine if task is recurring
+        const selectedValue = this.elements.selectElement ? this.elements.selectElement.value : '';
+        const isRecurring = selectedValue && selectedValue !== '';
+        
+        if (isRecurring) {
+            // Show icon, hide placeholder
+            if (recurringIconPlaceholder) {
+                recurringIconPlaceholder.style.visibility = 'hidden';
+            }
+            
+            // Create or show recurring icon
+            if (!recurringIcon) {
+                // Create new icon if it doesn't exist
+                const newIcon = document.createElement('span');
+                newIcon.className = 'recurring-icon';
+                newIcon.title = 'Recurring';
+                newIcon.textContent = '🔄';
+                
+                // Insert after checkbox
+                const checkbox = taskView.querySelector('.complete-task-checkbox');
+                if (checkbox) {
+                    checkbox.after(newIcon);
+                }
+            } else {
+                recurringIcon.style.visibility = 'visible';
+                recurringIcon.textContent = '🔄';
+            }
+        } else {
+            // Hide icon, show placeholder
+            if (recurringIcon) {
+                recurringIcon.style.visibility = 'hidden';
+                recurringIcon.textContent = '';
+            }
+            
+            if (recurringIconPlaceholder) {
+                recurringIconPlaceholder.style.visibility = 'hidden';
+            } else {
+                // Create placeholder if it doesn't exist
+                const newPlaceholder = document.createElement('span');
+                newPlaceholder.className = 'recurring-icon-placeholder';
+                
+                const checkbox = taskView.querySelector('.complete-task-checkbox');
+                if (checkbox) {
+                    checkbox.after(newPlaceholder);
+                }
+            }
+        }
     }
     
     /**
@@ -163,7 +229,7 @@ class InlineRecurringTaskField {
     updateSkipButton() {
         if (!this.taskId) return;
         
-        const skipBtn = document.querySelector(`.skip-task-btn[data-task-id="${this.taskId}"]`);
+        const skipBtn = DOMUtils.findSkipTaskButton(this.taskId);
         if (!skipBtn) return;
         
         const selectedValue = this.elements.selectElement ? this.elements.selectElement.value : '';
