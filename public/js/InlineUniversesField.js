@@ -151,15 +151,126 @@ class InlineUniversesField {
             });
         }
         
-        // Handle add universe button
-        const addBtn = document.querySelector(`.add-universe-btn[data-task-id="${this.taskId}"]`);
-        if (addBtn) {
-            addBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent TaskCardEditor from also handling this
-                this.addUniverseRow();
-                // Wait a bit for the new row to be added
-                setTimeout(() => this.updateDisplay(), 100);
+        // Use event delegation for add universe button - attach to document
+        // This ensures it works even if the edit element is hidden
+        console.log('InlineUniversesField: Setting up event delegation for add button on', this.fieldId, {
+            editElement: !!this.elements.editElement,
+            taskId: this.taskId
+        });
+        
+        // Store references for the event handler
+        const fieldId = this.fieldId;
+        const taskId = this.taskId;
+        const instance = this;
+        
+        // Listen for click events on the document
+        const clickHandler = function(e) {
+            // Log ALL clicks to see what's happening
+            const target = e.target;
+            const hasAddUniverseClass = target.classList?.contains('add-universe-btn') || 
+                                       target.closest('.add-universe-btn');
+            
+            if (hasAddUniverseClass || target.textContent?.includes('Add Universe')) {
+                console.log('InlineUniversesField: Potential add universe button click detected', {
+                    fieldId: fieldId,
+                    taskId: taskId,
+                    target: target,
+                    targetClass: target.className,
+                    targetText: target.textContent,
+                    closestBtn: target.closest('.add-universe-btn'),
+                    closestBtnClass: target.closest('.add-universe-btn')?.className,
+                    closestBtnDataset: target.closest('.add-universe-btn')?.dataset
+                });
+            }
+            
+            // Check if the clicked element is the add universe button
+            const addBtn = target.closest('.add-universe-btn') || 
+                          (target.classList?.contains('add-universe-btn') ? target : null);
+            
+            if (addBtn) {
+                console.log('InlineUniversesField: Click detected on add universe button', {
+                    fieldId: fieldId,
+                    taskId: taskId,
+                    clickedTaskId: addBtn.dataset?.taskId,
+                    clickedTaskIdType: typeof addBtn.dataset?.taskId,
+                    taskIdType: typeof taskId,
+                    target: target,
+                    addBtn: addBtn,
+                    addBtnClasses: addBtn.className
+                });
+                
+                // Check if it's for this task - compare as strings to avoid type issues
+                const clickedTaskId = addBtn.dataset?.taskId;
+                if (clickedTaskId && clickedTaskId.toString() === taskId.toString()) {
+                    console.log('InlineUniversesField: Matched add button for task', taskId);
+                    
+                    // Verify it's within our field's edit element
+                    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
+                    console.log('InlineUniversesField: Field element check', {
+                        fieldElement: !!fieldElement,
+                        addBtn: !!addBtn,
+                        contains: fieldElement?.contains(addBtn)
+                    });
+                    
+                    if (fieldElement && fieldElement.contains(addBtn)) {
+                        console.log('InlineUniversesField: Field element contains button, handling click');
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent TaskCardEditor from also handling this
+                        console.log('InlineUniversesField: Add universe button clicked via delegation', fieldId);
+                        instance.addUniverseRow();
+                        // Wait a bit for the new row to be added
+                        setTimeout(() => instance.updateDisplay(), 100);
+                    } else {
+                        console.log('InlineUniversesField: Field element does not contain button', {
+                            fieldElement: !!fieldElement,
+                            addBtn: !!addBtn,
+                            fieldElementId: fieldElement?.id,
+                            addBtnParent: addBtn.parentElement?.className
+                        });
+                    }
+                } else {
+                    console.log('InlineUniversesField: Task ID mismatch', {
+                        clickedTaskId: clickedTaskId,
+                        expectedTaskId: taskId,
+                        match: clickedTaskId?.toString() === taskId.toString()
+                    });
+                }
+            }
+        };
+        
+        // Attach to document with capture phase (fires BEFORE bubble phase)
+        document.addEventListener('click', clickHandler, true);
+        console.log('InlineUniversesField: Document click listener attached for', fieldId, {
+            handler: clickHandler,
+            taskId: taskId
+        });
+        
+        // Test: Add a simple click listener to verify document listeners work
+        const testHandler = function(e) {
+            if (e.target.closest('.add-universe-btn')) {
+                console.log('TEST: Document click handler fired for add-universe-btn');
+            }
+        };
+        document.addEventListener('click', testHandler, true);
+        
+        // Store handler for potential cleanup
+        this._addButtonClickHandler = clickHandler;
+        
+        // Also handle remove universe buttons using event delegation
+        if (this.elements.container) {
+            this.elements.container.addEventListener('click', (e) => {
+                const removeBtn = e.target.closest('.remove-universe-btn[data-task-id]');
+                if (removeBtn && removeBtn.dataset.taskId === this.taskId.toString()) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('InlineUniversesField: Remove universe button clicked via delegation');
+                    const row = removeBtn.closest('.universe-item-row');
+                    if (row) {
+                        row.remove();
+                        this.updateSelectOptions(); // Update disabled options in remaining selects
+                        this.updateDisplay();
+                    }
+                }
             });
         }
     }
@@ -350,6 +461,14 @@ class InlineUniversesField {
      * Handle save - collects universe IDs and primary index, then saves via AJAX
      */
     async handleSave(newValue, oldValue, editor) {
+        console.log('🔵 InlineUniversesField.handleSave called', {
+            fieldId: this.fieldId,
+            taskId: this.taskId,
+            newValue: newValue,
+            oldValue: oldValue,
+            hasEditor: !!editor,
+            editorFieldId: editor?.fieldId
+        });
         if (!this.elements.container) return false;
         
         // Collect all universe IDs and primary index
@@ -433,3 +552,6 @@ class InlineUniversesField {
         }
     }
 }
+
+// Expose to window for global access
+window.InlineUniversesField = InlineUniversesField;

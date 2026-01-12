@@ -78,10 +78,6 @@
         </div>
     </div>
 
-    <a href="{{ route('tasks.create', ['universe_id' => $universe->id]) }}">
-        + add task
-    </a>
-
     @if($universe->relationLoaded('children') && $universe->children->isNotEmpty())
         <ul>
             @foreach($universe->children as $child)
@@ -109,8 +105,18 @@
     }
 @endphp
 
-@if($primaryTasks->isNotEmpty() || $secondaryTasksWithPrimary->isNotEmpty())
-    <ul class="tasks-list">
+{{-- Always show tasks list when there are tasks OR to show the add task button --}}
+<ul class="tasks-list">
+    {{-- Add Task Card - Always First --}}
+    <li class="task-item add-task-card" data-universe-id="{{ $universe->id }}">
+        <div class="task-view">
+            <span class="add-task-icon">+</span>
+            <span class="recurring-icon-placeholder"></span>
+            <strong class="task-name add-task-name">add task</strong>
+        </div>
+    </li>
+    
+    @if($primaryTasks->isNotEmpty() || $secondaryTasksWithPrimary->isNotEmpty())
         {{-- Primary tasks --}}
         @foreach ($primaryTasks as $task)
             @include('tasks._task_card', [
@@ -134,7 +140,19 @@
                 </span>
             </li>
         @endforeach
-    </ul>
-@endif
+        
+        {{-- Secondary tasks --}}
+        @foreach ($secondaryTasksWithPrimary as $item)
+            <li class="task-item secondary-task-item">
+                <span class="task-content">
+                    <em>
+                        {{ $item['task']->name }}
+                        [see {{ $item['primary_universe']->name }}]
+                    </em>
+                </span>
+            </li>
+        @endforeach
+    @endif
+</ul>
 
 

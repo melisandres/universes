@@ -178,9 +178,12 @@ class TaskCardEditor {
             }
             
             timeUnitRadios.forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    this.updateEstimatedTimeDisplay(e.target.value);
-                });
+                // Skip if the radio is inside an inline-editable-field (InlineEstimatedTimeField handles it)
+                if (!radio.closest('.inline-editable-field')) {
+                    radio.addEventListener('change', (e) => {
+                        this.updateEstimatedTimeDisplay(e.target.value);
+                    });
+                }
             });
             
             // Log form time unit radio buttons and input (skip if InlineLogTimeField is handling it)

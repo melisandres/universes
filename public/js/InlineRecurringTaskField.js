@@ -139,16 +139,21 @@ class InlineRecurringTaskField {
         if (!this.elements.selectElement) return false;
         
         const selectedValue = this.elements.selectElement.value || '';
+        console.log('InlineRecurringTaskField: Saving recurring task', { taskId: this.taskId, selectedValue });
         const success = await TaskFieldSaver.saveField(this.taskId, 'recurring_task_id', selectedValue);
         
         if (success) {
+            console.log('InlineRecurringTaskField: Save successful, updating display');
+            // Update display immediately and after a short delay to ensure DOM is ready
+            this.updateDisplay();
             setTimeout(() => {
                 this.updateDisplay();
                 this.updateSkipButton();
-            }, 50);
+            }, 100);
             return true;
         }
         
+        console.warn('InlineRecurringTaskField: Save failed');
         return false;
     }
     
@@ -179,3 +184,6 @@ class InlineRecurringTaskField {
         }
     }
 }
+
+// Expose to window for global access
+window.InlineRecurringTaskField = InlineRecurringTaskField;

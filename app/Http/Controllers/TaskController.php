@@ -92,6 +92,45 @@ class TaskController extends Controller
                 'is_primary' => ($index === $primaryIndex),
             ]);
         }
+        
+        // Reload task with relationships for rendering
+        $task->load('universeItems.universe', 'recurringTask');
+        
+        // Check if this is an AJAX request
+        $isAjax = $request->ajax() 
+            || $request->wantsJson() 
+            || $request->header('X-Requested-With') === 'XMLHttpRequest'
+            || str_contains($request->header('Accept', ''), 'application/json');
+        
+        // For AJAX requests, return JSON with HTML partial
+        if ($isAjax) {
+            // Get the current universe (primary universe)
+            $currentUniverse = null;
+            if ($primaryIndex >= 0 && isset($universeIds[$primaryIndex])) {
+                $currentUniverse = Universe::find($universeIds[$primaryIndex]);
+            }
+            
+            // Get all universes and recurring tasks for the partial
+            $allUniverses = Universe::orderBy('name')->get();
+            $recurringTasks = \App\Models\RecurringTask::where('active', true)->get();
+            
+            // Render the task card partial
+            $taskCardHtml = view('tasks._task_card', [
+                'task' => $task,
+                'inlineEdit' => true,
+                'currentUniverse' => $currentUniverse,
+                'referer' => $request->input('referer', request()->fullUrl()),
+                'universes' => $allUniverses,
+                'recurringTasks' => $recurringTasks
+            ])->render();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Task created successfully',
+                'task' => $task,
+                'html' => $taskCardHtml
+            ]);
+        }
     
         // Redirect back to referer if available and valid, otherwise to tasks index
         $referer = $request->input('referer');

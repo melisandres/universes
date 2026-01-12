@@ -89,24 +89,54 @@ class InlineDeadlineField {
             });
         }
         
-        // Handle "Today" button
-        if (this.elements.todayBtn) {
-            this.elements.todayBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent TaskCardEditor from also handling this
-                this.setToday();
-            });
-        }
+        // Use event delegation for "Today" button - attach to document
+        // This ensures it works even if the edit element is hidden
+        console.log('InlineDeadlineField: Setting up event delegation for today button on', this.fieldId, {
+            editElement: !!this.elements.editElement,
+            taskId: this.taskId,
+            todayBtn: !!this.elements.todayBtn
+        });
+        
+        // Store references for the event handler
+        const fieldId = this.fieldId;
+        const taskId = this.taskId;
+        const instance = this;
+        
+        // Listen for click events on the document
+        const clickHandler = function(e) {
+            // Check if the clicked element is the today button for this task
+            const todayBtn = e.target.closest('.btn-today[data-task-id]');
+            if (todayBtn && todayBtn.dataset.taskId === taskId.toString()) {
+                // Verify it's within our field's edit element
+                const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
+                if (fieldElement && fieldElement.contains(todayBtn)) {
+                    e.preventDefault();
+                    e.stopPropagation(); // Prevent TaskCardEditor from also handling this
+                    console.log('InlineDeadlineField: Today button clicked via delegation', fieldId);
+                    instance.setToday();
+                }
+            }
+        };
+        
+        // Attach to document with capture phase
+        document.addEventListener('click', clickHandler, true);
+        
+        // Store handler for potential cleanup
+        this._todayButtonClickHandler = clickHandler;
     }
     
     /**
      * Set the deadline to today at 5:00 PM
      */
     setToday() {
-        if (!this.elements.inputElement) return;
+        if (!this.elements.inputElement) {
+            console.warn('InlineDeadlineField: Input element not found');
+            return;
+        }
         
         const today = new Date();
         today.setHours(17, 0, 0, 0); // 5:00 PM
+        console.log('InlineDeadlineField: Setting today to', today);
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
         const day = String(today.getDate()).padStart(2, '0');
@@ -181,15 +211,23 @@ class InlineDeadlineField {
         if (!this.elements.inputElement) return false;
         
         const deadlineValue = this.elements.inputElement.value || '';
+        console.log('InlineDeadlineField: Saving deadline', { taskId: this.taskId, deadlineValue });
         const success = await TaskFieldSaver.saveField(this.taskId, 'deadline_at', deadlineValue);
         
         if (success) {
+            console.log('InlineDeadlineField: Save successful, updating display');
+            // Update display immediately and after a short delay to ensure DOM is ready
+            this.updateDisplay();
             setTimeout(() => {
                 this.updateDisplay();
-            }, 50);
+            }, 100);
             return true;
         }
         
+        console.warn('InlineDeadlineField: Save failed');
         return false;
     }
 }
+
+// Expose to window for global access
+window.InlineDeadlineField = InlineDeadlineField;

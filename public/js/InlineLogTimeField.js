@@ -174,3 +174,6 @@ class InlineLogTimeField {
         return true; // Allow UI update
     }
 }
+
+// Expose to window for global access
+window.InlineLogTimeField = InlineLogTimeField;

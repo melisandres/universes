@@ -48,21 +48,19 @@ class InlineFieldEditor {
     
     attachEventListeners() {
         // Edit button - toggle between edit and view mode (acts as cancel when in edit mode)
-        const editBtn = document.querySelector(`.inline-field-edit-btn[data-field-id="${this.fieldId}"]`);
-        if (editBtn) {
-            editBtn.addEventListener('click', () => {
-                if (this.isEditing()) {
-                    this.handleCancel();
-                } else {
-                    this.enterEditMode();
-                }
-            });
-        }
+        // NOTE: We're using event delegation now, so we don't attach individual listeners
+        // This prevents double-handling and works for dynamically added content
+        // The event delegation handler in the global scope handles all edit button clicks
         
-        // Save button
+        // Save button - we use event delegation, but also attach individual listener as fallback
+        // This ensures it works even if event delegation fails
         const saveBtn = this.editElement?.querySelector('.inline-field-save-btn');
         if (saveBtn) {
-            saveBtn.addEventListener('click', () => this.handleSave());
+            saveBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleSave();
+            });
         }
         
         // Auto-save on Enter key
@@ -78,7 +76,15 @@ class InlineFieldEditor {
             });
             
             // Auto-save on blur
-            this.inputElement.addEventListener('blur', () => {
+            // NOTE: We prevent blur from auto-saving if the user is clicking the edit button
+            // This prevents unwanted saves when toggling edit mode
+            this.inputElement.addEventListener('blur', (e) => {
+                // Don't auto-save if the related target is the edit button (user clicked pencil)
+                const relatedTarget = e.relatedTarget;
+                if (relatedTarget && relatedTarget.classList.contains('inline-field-edit-btn')) {
+                    return;
+                }
+                
                 if (this.isEditing()) {
                     this.handleSave();
                 }
@@ -189,7 +195,13 @@ class InlineFieldEditor {
     }
     
     handleSave() {
+        console.log('InlineFieldEditor: handleSave called for', this.fieldId, {
+            hasOnSave: !!this.options.onSave,
+            onSaveType: typeof this.options.onSave
+        });
+        
         const newValue = this.getInputValue();
+        console.log('InlineFieldEditor: New value', newValue);
         
         // Validate if validator provided
         if (this.options.validate) {
@@ -202,26 +214,34 @@ class InlineFieldEditor {
         
         // Call onSave callback if provided
         if (this.options.onSave) {
+            console.log('InlineFieldEditor: Calling onSave callback');
             const result = this.options.onSave(newValue, this.originalValue, this);
             
             // If callback returns a promise, wait for it
             if (result instanceof Promise) {
                 result.then((success) => {
+                    console.log('InlineFieldEditor: onSave promise resolved', success);
                     if (success !== false) {
                         this.updateDisplayValue(newValue);
                         this.originalValue = newValue;
                         this.exitEditMode();
+                    } else {
+                        console.warn('InlineFieldEditor: onSave returned false, not updating');
                     }
                 }).catch((error) => {
-                    console.error('Error saving field:', error);
+                    console.error('InlineFieldEditor: Error saving field:', error);
                     alert('Error saving field. Please try again.');
                 });
             } else if (result !== false) {
+                console.log('InlineFieldEditor: onSave returned non-promise result', result);
                 this.updateDisplayValue(newValue);
                 this.originalValue = newValue;
                 this.exitEditMode();
+            } else {
+                console.warn('InlineFieldEditor: onSave returned false, not updating');
             }
         } else {
+            console.warn('InlineFieldEditor: No onSave callback, just updating display');
             // No callback - just update display and exit
             this.updateDisplayValue(newValue);
             this.originalValue = newValue;
@@ -263,6 +283,118 @@ class InlineFieldEditor {
         return this.getInputValue();
     }
 }
+
+/**
+ * Event delegation for edit and save button clicks
+ * This handles clicks on dynamically added content without needing to attach individual listeners
+ */
+document.addEventListener('click', function(e) {
+    // Handle edit button clicks
+    const editBtn = e.target.closest('.inline-field-edit-btn[data-field-id]');
+    if (editBtn) {
+        // Prevent the click from triggering other handlers
+        e.stopPropagation();
+        
+        const fieldId = editBtn.dataset.fieldId;
+        if (!fieldId) return;
+        
+        // Get or create the InlineFieldEditor instance
+        if (!window.inlineFieldEditors) {
+            window.inlineFieldEditors = {};
+        }
+        
+        let editor = window.inlineFieldEditors[fieldId];
+        
+        // If editor doesn't exist, try to create it
+        if (!editor) {
+            // Check if the field exists
+            const fieldElement = document.querySelector(`.inline-editable-field[data-field-id="${fieldId}"]`);
+            if (!fieldElement) return;
+            
+            try {
+                editor = new InlineFieldEditor(fieldId);
+                window.inlineFieldEditors[fieldId] = editor;
+            } catch (error) {
+                console.warn('InlineFieldEditor: Could not create editor for field', fieldId, error);
+                return;
+            }
+        }
+        
+        // Check current state and toggle
+        const isCurrentlyEditing = editor.isEditing();
+        
+        if (isCurrentlyEditing) {
+            // Field is in edit mode - cancel and close
+            editor.handleCancel();
+        } else {
+            // Field is in view mode - open for editing
+            editor.enterEditMode();
+        }
+        return;
+    }
+    
+    // Handle save button clicks
+    const saveBtn = e.target.closest('.inline-field-save-btn[data-field-id]');
+    if (saveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const fieldId = saveBtn.dataset.fieldId;
+        if (!fieldId) return;
+        
+        // Get or create the InlineFieldEditor instance
+        if (!window.inlineFieldEditors) {
+            window.inlineFieldEditors = {};
+        }
+        
+        let editor = window.inlineFieldEditors[fieldId];
+        
+        // If editor doesn't exist, try to create it
+        // BUT: Only create if it's a simple field. Complex fields (universes, estimated-time, etc.)
+        // should be initialized by their custom field classes, which set up the onSave callback.
+        // If we create a new editor here, it will overwrite the one with the custom onSave callback.
+        if (!editor) {
+            // Check if the field exists
+            const fieldElement = document.querySelector(`.inline-editable-field[data-field-id="${fieldId}"]`);
+            if (!fieldElement) {
+                console.warn('InlineFieldEditor: Field element not found for', fieldId);
+                return;
+            }
+            
+            // Check if this is a complex field that should be initialized by a custom class
+            // Complex fields have data-no-auto-init="true" or are initialized by field-specific classes
+            const isComplexField = fieldElement.dataset.noAutoInit === 'true' ||
+                                   fieldId.startsWith('universes-') ||
+                                   fieldId.startsWith('estimated-time-') ||
+                                   fieldId.startsWith('recurring-task-') ||
+                                   fieldId.startsWith('deadline-') ||
+                                   fieldId.startsWith('log-time-');
+            
+            if (isComplexField) {
+                console.warn('InlineFieldEditor: Complex field should be initialized by custom field class', fieldId);
+                return;
+            }
+            
+            try {
+                editor = new InlineFieldEditor(fieldId);
+                window.inlineFieldEditors[fieldId] = editor;
+            } catch (error) {
+                console.warn('InlineFieldEditor: Could not create editor for field', fieldId, error);
+                return;
+            }
+        }
+        
+        // Call handleSave
+        console.log('🟠 InlineFieldEditor: Calling handleSave', { 
+            fieldId: fieldId, 
+            hasEditor: !!editor,
+            hasOnSave: !!editor?.options?.onSave,
+            editorConstructor: editor?.constructor?.name,
+            onSaveType: typeof editor?.options?.onSave
+        });
+        editor.handleSave();
+    }
+});
 
 /**
  * Initialize all inline editable fields on the page

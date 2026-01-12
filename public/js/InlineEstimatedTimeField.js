@@ -56,7 +56,8 @@ class InlineEstimatedTimeField {
     }
     
     /**
-     * Setup all event listeners
+     * Setup all event listeners using event delegation
+     * This ensures listeners work for dynamically added content
      */
     setupEventListeners() {
         // Update display when entering edit mode
@@ -78,20 +79,53 @@ class InlineEstimatedTimeField {
             });
         }
         
-        // Update display and step attribute when unit radio changes
-        if (this.elements.minutesRadio) {
-            this.elements.minutesRadio.addEventListener('change', () => {
-                this.updateStepAttribute();
-                this.updateDisplay();
-            });
-        }
+        // Use event delegation for radio buttons - attach to document
+        // This ensures it works even if the edit element is hidden
+        console.log('InlineEstimatedTimeField: Setting up event delegation for radio buttons on', this.fieldId, {
+            editElement: !!this.elements.editElement,
+            minutesRadio: !!this.elements.minutesRadio,
+            hoursRadio: !!this.elements.hoursRadio,
+            minutesRadioId: this.elements.minutesRadio?.id,
+            hoursRadioId: this.elements.hoursRadio?.id
+        });
         
-        if (this.elements.hoursRadio) {
-            this.elements.hoursRadio.addEventListener('change', () => {
-                this.updateStepAttribute();
-                this.updateDisplay();
-            });
-        }
+        // Store a reference to this instance for the event handler
+        const fieldId = this.fieldId;
+        const instance = this;
+        
+        // Listen for change events on the document (capture phase to catch early)
+        const changeHandler = function(e) {
+            // Check if the changed element is a radio button for this field's time unit
+            const isTimeUnitRadio = e.target.type === 'radio' && 
+                                   (e.target.id === `time-unit-minutes-${fieldId}` || 
+                                    e.target.id === `time-unit-hours-${fieldId}`);
+            
+            if (isTimeUnitRadio) {
+                console.log('InlineEstimatedTimeField: Radio button changed via delegation', {
+                    fieldId: fieldId,
+                    radioId: e.target.id,
+                    value: e.target.value,
+                    checked: e.target.checked
+                });
+                
+                // Update the cached radio references in case they were null before
+                if (!instance.elements.minutesRadio && e.target.id === `time-unit-minutes-${fieldId}`) {
+                    instance.elements.minutesRadio = e.target;
+                }
+                if (!instance.elements.hoursRadio && e.target.id === `time-unit-hours-${fieldId}`) {
+                    instance.elements.hoursRadio = e.target;
+                }
+                
+                instance.updateStepAttribute();
+                instance.updateDisplay();
+            }
+        };
+        
+        // Attach to document with capture phase
+        document.addEventListener('change', changeHandler, true);
+        
+        // Store handler for potential cleanup
+        this._changeHandler = changeHandler;
     }
     
     /**
@@ -188,12 +222,18 @@ class InlineEstimatedTimeField {
         const success = await TaskFieldSaver.saveField(this.taskId, 'estimated_time', timeValue, { timeUnit: unit });
         
         if (success) {
+            console.log('InlineEstimatedTimeField: Save successful, updating display', { timeValue, unit });
+            // Update display immediately and after a short delay to ensure DOM is ready
+            this.updateDisplay();
             setTimeout(() => {
                 this.updateDisplay();
-            }, 50);
+            }, 100);
             return true;
         }
         
         return false;
     }
 }
+
+// Expose to window for global access
+window.InlineEstimatedTimeField = InlineEstimatedTimeField;

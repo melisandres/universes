@@ -39,6 +39,12 @@
     <script src="{{ asset('js/InlineDeadlineField.js') }}"></script>
     <script src="{{ asset('js/InlineLogTimeField.js') }}"></script>
     
+    {{-- Task field initializer (initializes all field classes) --}}
+    <script src="{{ asset('js/TaskFieldInitializer.js') }}"></script>
+    
+    {{-- Diagnostics (comprehensive logging) - load after all field classes --}}
+    <script src="{{ asset('js/Diagnostics.js') }}"></script>
+    
     {{-- Task card editor (may use registries from main.js) --}}
     <script src="{{ asset('js/TaskCardEditor.js') }}"></script>
     

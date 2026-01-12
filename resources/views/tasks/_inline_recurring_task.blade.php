@@ -55,16 +55,4 @@
 </div>
 
 {{-- Initialize with InlineRecurringTaskField class --}}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const fieldId = '{{ $fieldId }}';
-    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
-    
-    if (fieldElement) {
-        const config = {
-            taskId: parseInt('{{ $task->id }}', 10)
-        };
-        new InlineRecurringTaskField(fieldId, config);
-    }
-});
-</script>
+{{-- Field initialization is handled by TaskFieldInitializer.js --}}

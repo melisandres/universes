@@ -145,63 +145,7 @@
             </div>
         </div>
         
-        {{-- Initialize inline editable fields with individual save functionality --}}
-        <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const editMode = document.getElementById('task-edit-{{ $task->id }}');
-            if (!editMode) return;
-            const taskId = parseInt(editMode.dataset.taskId, 10);
-            
-            // Wait a bit for auto-initialization to complete
-            setTimeout(function() {
-                // Name field
-                const nameFieldId = 'task-name-' + taskId;
-                if (window.inlineFieldEditors && window.inlineFieldEditors[nameFieldId]) {
-                    const nameEditor = window.inlineFieldEditors[nameFieldId];
-                    nameEditor.options.onSave = async function(newValue, oldValue, editor) {
-                        const success = await TaskFieldSaver.saveField(taskId, 'name', newValue);
-                        if (success) {
-                            editor.updateDisplayValue(newValue);
-                            editor.originalValue = newValue;
-                            return true;
-                        }
-                        return false;
-                    };
-                }
-                
-                // Description field
-                const descFieldId = 'task-description-' + taskId;
-                if (window.inlineFieldEditors && window.inlineFieldEditors[descFieldId]) {
-                    const descEditor = window.inlineFieldEditors[descFieldId];
-                    descEditor.options.onSave = async function(newValue, oldValue, editor) {
-                        const success = await TaskFieldSaver.saveField(taskId, 'description', newValue);
-                        if (success) {
-                            editor.updateDisplayValue(newValue);
-                            editor.originalValue = newValue;
-                            return true;
-                        }
-                        return false;
-                    };
-                }
-                
-                // Initialize skip button visibility based on recurring task status
-                // The InlineRecurringTaskField will handle updates when the field changes
-                // But we need to set initial visibility based on data attributes
-                const skipBtn = document.querySelector(`.skip-task-btn[data-task-id="${taskId}"]`);
-                if (skipBtn) {
-                    const isRecurring = skipBtn.dataset.isRecurring === '1';
-                    const isCompleted = skipBtn.dataset.isCompleted === '1';
-                    const isSkipped = skipBtn.dataset.isSkipped === '1';
-                    
-                    if (isRecurring && !isCompleted && !isSkipped) {
-                        skipBtn.style.display = 'inline-block';
-                    } else {
-                        skipBtn.style.display = 'none';
-                    }
-                }
-            }, 100);
-        });
-        </script>
+        {{-- Field initialization and save handlers are set up by TaskFieldInitializer.js and AddTaskCard.js --}}
     @endif
 </li>
 

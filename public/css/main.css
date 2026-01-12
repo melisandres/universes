@@ -511,6 +511,41 @@ button.universe-edit-toggle-btn svg {
     color: #6c757d;
 }
 
+/* Add Task Card - No status border, different hover */
+.add-task-card {
+    border-left: none !important;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+}
+
+.add-task-card:hover {
+    background-color: #f8f9fa;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.add-task-card:active {
+    transform: translateY(0);
+}
+
+.add-task-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #6c757d;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.add-task-name {
+    color: #6c757d;
+    font-weight: 500;
+}
+
 /* Task edit mode */
 .task-edit-mode {
     padding: 0.75rem;

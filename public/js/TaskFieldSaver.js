@@ -142,3 +142,8 @@ class TaskFieldSaver {
         }
     }
 }
+
+// Ensure TaskFieldSaver is available on window for global access
+if (typeof window !== 'undefined') {
+    window.TaskFieldSaver = TaskFieldSaver;
+}

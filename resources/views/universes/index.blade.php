@@ -15,6 +15,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/AddTaskCard.js') }}"></script>
 <script src="{{ asset('js/universes.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
