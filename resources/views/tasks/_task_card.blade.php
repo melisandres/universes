@@ -99,9 +99,7 @@
                 <input type="hidden" name="status" value="{{ $task->status ?? 'open' }}">
                 
                 <div class="task-action-buttons">
-                    @if($task->isRecurring() && $task->completed_at === null && $task->skipped_at === null)
-                        <button type="button" class="skip-task-btn" data-task-id="{{ $task->id }}">Skip</button>
-                    @endif
+                    <button type="button" class="skip-task-btn" data-task-id="{{ $task->id }}" data-is-recurring="{{ $task->isRecurring() ? '1' : '0' }}" data-is-completed="{{ $task->completed_at !== null ? '1' : '0' }}" data-is-skipped="{{ $task->skipped_at !== null ? '1' : '0' }}">Skip</button>
                     <button type="button" class="delete-task-btn" data-task-id="{{ $task->id }}">Delete</button>
                 </div>
                     </form>
@@ -184,6 +182,22 @@
                         }
                         return false;
                     };
+                }
+                
+                // Initialize skip button visibility based on recurring task status
+                // The InlineRecurringTaskField will handle updates when the field changes
+                // But we need to set initial visibility based on data attributes
+                const skipBtn = document.querySelector(`.skip-task-btn[data-task-id="${taskId}"]`);
+                if (skipBtn) {
+                    const isRecurring = skipBtn.dataset.isRecurring === '1';
+                    const isCompleted = skipBtn.dataset.isCompleted === '1';
+                    const isSkipped = skipBtn.dataset.isSkipped === '1';
+                    
+                    if (isRecurring && !isCompleted && !isSkipped) {
+                        skipBtn.style.display = 'inline-block';
+                    } else {
+                        skipBtn.style.display = 'none';
+                    }
                 }
             }, 100);
         });

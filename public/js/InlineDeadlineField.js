@@ -1,0 +1,195 @@
+/**
+ * InlineDeadlineField - Manages inline editing for deadline field
+ * 
+ * This class handles:
+ * - Datetime-local input
+ * - "Today" button that sets current date/time
+ * - Display formatting ("no deadline" or "deadline: [formatted date]")
+ * - Saving via TaskFieldSaver
+ */
+class InlineDeadlineField {
+    constructor(fieldId, config = {}) {
+        this.fieldId = fieldId;
+        this.taskId = config.taskId;
+        this.config = config;
+        
+        // Cache elements
+        this.elements = {
+            viewElement: document.getElementById(`inline-view-${fieldId}`),
+            editElement: document.getElementById(`inline-edit-${fieldId}`),
+            inputElement: document.getElementById(`input-${fieldId}`),
+            valueElement: null,
+            todayBtn: null
+        };
+        
+        if (this.elements.viewElement) {
+            this.elements.valueElement = this.elements.viewElement.querySelector('.inline-field-value');
+        }
+        
+        // Find the "Today" button
+        if (this.taskId) {
+            this.elements.todayBtn = document.querySelector(`.btn-today[data-task-id="${this.taskId}"]`);
+        }
+        
+        this.init();
+    }
+    
+    init() {
+        if (!this.elements.viewElement || !this.elements.editElement || !this.elements.inputElement) {
+            console.warn(`InlineDeadlineField: Missing elements for field ${this.fieldId}`);
+            return;
+        }
+        
+        this.setupEditor();
+        this.setupEventListeners();
+        this.updateDisplay();
+    }
+    
+    /**
+     * Setup InlineFieldEditor with custom handlers
+     */
+    setupEditor() {
+        if (!window.inlineFieldEditors) {
+            window.inlineFieldEditors = {};
+        }
+        
+        window.inlineFieldEditors[this.fieldId] = new InlineFieldEditor(this.fieldId, {
+            formatValue: (value) => this.formatValue(value),
+            onSave: (newValue, oldValue, editor) => this.handleSave(newValue, oldValue, editor)
+        });
+    }
+    
+    /**
+     * Setup all event listeners
+     */
+    setupEventListeners() {
+        // Update display when entering edit mode
+        const editBtn = document.querySelector(`#inline-view-${this.fieldId} .inline-field-edit-btn`);
+        if (editBtn) {
+            editBtn.addEventListener('click', () => {
+                // Small delay to ensure edit mode is visible
+                setTimeout(() => this.updateDisplay(), 10);
+            });
+        }
+        
+        // Update display when deadline input changes
+        if (this.elements.inputElement) {
+            this.elements.inputElement.addEventListener('change', () => {
+                const editElement = document.getElementById(`inline-edit-${this.fieldId}`);
+                if (editElement && !editElement.classList.contains('d-none')) {
+                    this.updateDisplay();
+                }
+            });
+            
+            this.elements.inputElement.addEventListener('input', () => {
+                const editElement = document.getElementById(`inline-edit-${this.fieldId}`);
+                if (editElement && !editElement.classList.contains('d-none')) {
+                    this.updateDisplay();
+                }
+            });
+        }
+        
+        // Handle "Today" button
+        if (this.elements.todayBtn) {
+            this.elements.todayBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent TaskCardEditor from also handling this
+                this.setToday();
+            });
+        }
+    }
+    
+    /**
+     * Set the deadline to today at 5:00 PM
+     */
+    setToday() {
+        if (!this.elements.inputElement) return;
+        
+        const today = new Date();
+        today.setHours(17, 0, 0, 0); // 5:00 PM
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const hours = String(today.getHours()).padStart(2, '0');
+        const minutes = String(today.getMinutes()).padStart(2, '0');
+        const datetimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+        
+        this.elements.inputElement.value = datetimeValue;
+        // Update display immediately
+        setTimeout(() => this.updateDisplay(), 10);
+    }
+    
+    /**
+     * Update the display value from form inputs
+     */
+    updateDisplay() {
+        if (!this.elements.inputElement || !this.elements.valueElement) {
+            return;
+        }
+        
+        const deadlineValue = this.elements.inputElement.value;
+        if (!deadlineValue || deadlineValue === '') {
+            this.elements.valueElement.textContent = 'no deadline';
+            return;
+        }
+        
+        // Convert datetime-local format (YYYY-MM-DDTHH:mm) to readable format
+        const date = new Date(deadlineValue);
+        if (isNaN(date.getTime())) {
+            this.elements.valueElement.textContent = 'no deadline';
+            return;
+        }
+        
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        this.elements.valueElement.textContent = 'deadline: ' + formattedDate;
+    }
+    
+    /**
+     * Format value for display
+     */
+    formatValue(value) {
+        if (!value || value === '') return 'no deadline';
+        
+        // Convert datetime-local format (YYYY-MM-DDTHH:mm) to readable format
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return 'no deadline';
+        
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        return 'deadline: ' + formattedDate;
+    }
+    
+    /**
+     * Handle save - extracts deadline value and saves via TaskFieldSaver
+     */
+    async handleSave(newValue, oldValue, editor) {
+        if (!this.elements.inputElement) return false;
+        
+        const deadlineValue = this.elements.inputElement.value || '';
+        const success = await TaskFieldSaver.saveField(this.taskId, 'deadline_at', deadlineValue);
+        
+        if (success) {
+            setTimeout(() => {
+                this.updateDisplay();
+            }, 50);
+            return true;
+        }
+        
+        return false;
+    }
+}

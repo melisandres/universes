@@ -21,7 +21,10 @@ class TaskController extends Controller
         ->orderBy('deadline_at')
         ->get();
 
-        return view('tasks.index', compact('tasks'));
+        $universes = Universe::orderBy('name')->get();
+        $recurringTasks = \App\Models\RecurringTask::where('active', true)->get();
+
+        return view('tasks.index', compact('tasks', 'universes', 'recurringTasks'));
     }
 
     /**

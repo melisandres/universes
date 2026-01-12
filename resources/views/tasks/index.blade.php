@@ -12,7 +12,13 @@
 @else
     <ul class="tasks-list">
         @foreach ($tasks as $task)
-            @include('tasks._task_card', ['task' => $task, 'referer' => request()->fullUrl()])
+            @include('tasks._task_card', [
+                'task' => $task,
+                'referer' => request()->fullUrl(),
+                'inlineEdit' => true,
+                'universes' => $universes ?? null,
+                'recurringTasks' => $recurringTasks ?? null
+            ])
         @endforeach
     </ul>
 @endif

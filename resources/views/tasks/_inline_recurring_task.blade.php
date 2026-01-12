@@ -22,7 +22,7 @@
     }
 @endphp
 
-<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
+<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-task-id="{{ $task->id }}" data-no-auto-init="true">
     {{-- View Mode --}}
     <div id="{{ $viewId }}" class="inline-field-view inline-field-view-no-label">
         <span class="inline-field-value">{{ $displayValue }}</span>
@@ -54,91 +54,17 @@
     </div>
 </div>
 
-{{-- Initialize with custom formatting --}}
+{{-- Initialize with InlineRecurringTaskField class --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fieldId = '{{ $fieldId }}';
-    if (!window.inlineFieldEditors) window.inlineFieldEditors = {};
+    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
     
-    // Function to update display value from form inputs
-    function updateRecurringTaskDisplay() {
-        const select = document.getElementById('recurring-task-select-{{ $task->id }}');
-        const viewValue = document.querySelector(`#inline-view-${fieldId} .inline-field-value`);
-        const hiddenInput = document.getElementById('input-' + fieldId);
-        
-        if (!select || !viewValue) return;
-        
-        const selectedValue = select.value;
-        const selectedOption = select.options[select.selectedIndex];
-        const optionText = selectedOption ? selectedOption.text.trim() : '';
-        
-        // Update hidden input for InlineFieldEditor compatibility
-        if (hiddenInput) {
-            hiddenInput.value = selectedValue;
-        }
-        
-        // Format display text
-        if (!selectedValue || selectedValue === '' || optionText === '— none —') {
-            viewValue.textContent = 'non-recurring';
-        } else {
-            viewValue.textContent = 'recurring instance of ' + optionText;
-        }
-    }
-    
-    // Initialize the inline editor
-    window.inlineFieldEditors[fieldId] = new InlineFieldEditor(fieldId, {
-        formatValue: function(value) {
-            if (!value || value === '') return 'non-recurring';
-            
-            const select = document.getElementById('recurring-task-select-{{ $task->id }}');
-            if (!select) return 'non-recurring';
-            
-            const selectedOption = select.options[select.selectedIndex];
-            const optionText = selectedOption ? selectedOption.text.trim() : '';
-            
-            if (!value || value === '' || optionText === '— none —') {
-                return 'non-recurring';
-            } else {
-                return 'recurring instance of ' + optionText;
-            }
-        },
-        onSave: async function(newValue, oldValue, editor) {
-            const select = document.getElementById('recurring-task-select-{{ $task->id }}');
-            if (!select) return false;
-            
-            const selectedValue = select.value || '';
-            const success = await TaskFieldSaver.saveField({{ $task->id }}, 'recurring_task_id', selectedValue);
-            
-            if (success) {
-                setTimeout(function() {
-                    updateRecurringTaskDisplay();
-                }, 50);
-                return true;
-            }
-            return false;
-        }
-    });
-    
-    // Update display when select changes
-    const select = document.getElementById('recurring-task-select-{{ $task->id }}');
-    if (select) {
-        select.addEventListener('change', function() {
-            const editElement = document.getElementById('inline-edit-' + fieldId);
-            if (editElement && !editElement.classList.contains('d-none')) {
-                updateRecurringTaskDisplay();
-            }
-        });
-    }
-    
-    // Update display immediately on page load
-    updateRecurringTaskDisplay();
-    
-    // Also update when entering edit mode
-    const editBtn = document.querySelector(`#inline-view-${fieldId} .inline-field-edit-btn`);
-    if (editBtn) {
-        editBtn.addEventListener('click', function() {
-            setTimeout(updateRecurringTaskDisplay, 10);
-        });
+    if (fieldElement) {
+        const config = {
+            taskId: parseInt('{{ $task->id }}', 10)
+        };
+        new InlineRecurringTaskField(fieldId, config);
     }
 });
 </script>

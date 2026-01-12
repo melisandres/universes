@@ -32,6 +32,18 @@ class InlineFieldEditor {
     
     init() {
         this.attachEventListeners();
+        
+        // Decode HTML entities in the initial display value
+        // Blade templates HTML-encode values (e.g., ' becomes &#039;), so we need to decode them
+        if (this.valueElement) {
+            const initialText = this.valueElement.textContent;
+            if (initialText && initialText.includes('&#')) {
+                const decodedText = this.decodeHtmlEntities(initialText);
+                if (decodedText !== initialText) {
+                    this.valueElement.textContent = decodedText;
+                }
+            }
+        }
     }
     
     attachEventListeners() {
@@ -85,6 +97,17 @@ class InlineFieldEditor {
     enterEditMode() {
         if (!this.viewElement || !this.editElement) return;
         
+        // Decode HTML entities in textarea/input before reading original value
+        // This ensures we always work with raw, unencoded values and prevents double-encoding
+        if (this.inputElement && (this.inputElement.tagName === 'TEXTAREA' || this.inputElement.tagName === 'INPUT')) {
+            const currentValue = this.inputElement.value;
+            const decodedValue = this.decodeHtmlEntities(currentValue);
+            if (currentValue !== decodedValue) {
+                // Update the input with decoded value if it was encoded
+                this.inputElement.value = decodedValue;
+            }
+        }
+        
         this.originalValue = this.getInputValue();
         
         // Hide only the value display, keep label and pencil visible
@@ -127,13 +150,15 @@ class InlineFieldEditor {
     getInputValue() {
         if (!this.inputElement) return '';
         
-        if (this.inputElement.tagName === 'SELECT') {
-            return this.inputElement.value;
-        } else if (this.inputElement.tagName === 'TEXTAREA') {
-            return this.inputElement.value;
-        } else {
-            return this.inputElement.value;
+        let value = this.inputElement.value;
+        
+        // Decode HTML entities from textarea/input values
+        // This prevents double-encoding issues when Blade templates HTML-encode values
+        if (this.inputElement.tagName === 'TEXTAREA' || this.inputElement.tagName === 'INPUT') {
+            value = this.decodeHtmlEntities(value);
         }
+        
+        return value;
     }
     
     updateDisplayValue(value) {
@@ -141,8 +166,26 @@ class InlineFieldEditor {
             const displayValue = this.options.formatValue 
                 ? this.options.formatValue(value) 
                 : (value || this.inputElement?.placeholder || 'Not set');
-            this.valueElement.textContent = displayValue;
+            // Decode HTML entities to prevent double-encoding
+            // Note: value should already be decoded from getInputValue(), but decode again to be safe
+            const decodedValue = this.decodeHtmlEntities(displayValue);
+            this.valueElement.textContent = decodedValue;
         }
+    }
+    
+    /**
+     * Decode HTML entities in a string
+     * Prevents double-encoding issues when updating display values
+     * Handles cases where Blade templates HTML-encode values in textarea content
+     */
+    decodeHtmlEntities(text) {
+        if (!text || typeof text !== 'string') return text;
+        
+        // Use a temporary textarea to decode HTML entities
+        // This handles entities like &#039; (apostrophe), &amp; (ampersand), etc.
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = text;
+        return textarea.value;
     }
     
     handleSave() {

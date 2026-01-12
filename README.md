@@ -75,3 +75,29 @@ The application will be available at `http://localhost:8000`.
 ### Database
 
 This project uses SQLite by default. The database file is located at `database/database.sqlite` and will be created automatically when you run migrations.
+
+## Inline Editing System
+
+The application features a comprehensive inline editing system for task and universe fields. Fields are displayed as text with a pencil icon, and clicking the pencil toggles them into editable form inputs. Each field saves independently via AJAX.
+
+### Key Features
+
+- **Consistent UI/UX**: All editable fields use the same inline editing pattern
+- **Individual Field Saving**: Fields save independently without full form submission
+- **HTML Entity Handling**: Automatic encoding/decoding prevents double-encoding issues
+- **Custom Field Support**: Complex fields (universes, time, deadlines) have custom implementations
+- **Responsive Design**: Works on screens as small as 320px
+
+### Documentation
+
+For detailed information about the inline editing system, see:
+- [`docs/INLINE_EDITING_SYSTEM.md`](docs/INLINE_EDITING_SYSTEM.md) - Complete system documentation
+- [`INTEGRATION_TEST_CHECKLIST.md`](INTEGRATION_TEST_CHECKLIST.md) - Manual testing checklist
+
+### Architecture
+
+The inline editing system consists of:
+- **Blade Component**: Reusable `inline-editable-field` component
+- **Core JavaScript Classes**: `InlineFieldEditor`, `TaskFieldSaver`, `UniverseFieldSaver`
+- **Field-Specific Classes**: Custom implementations for complex fields
+- **Card Management**: `TaskCardEditor` for expandable card functionality

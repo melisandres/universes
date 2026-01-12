@@ -1,14 +1,30 @@
 /**
  * TaskCardEditor - OOP class for managing task card editing
  * 
- * This class handles all interactive functionality for task cards:
- * - Edit mode toggle
- * - Form submission via AJAX
- * - Universe add/remove
- * - Deadline management
- * - Status pill updates
+ * This class handles card-level interactive functionality for task cards:
+ * 
+ * **Core Card Functionality:**
+ * - Edit mode toggle (expand/collapse)
+ * - Task status pill updates (based on deadline)
  * - Complete checkbox with delay
- * - Time unit conversion (minutes/hours)
+ * - Skip task button
+ * - Delete task button
+ * - Complete & Log button
+ * - Log form submission
+ * 
+ * **Legacy Field Management (only for non-inline fields):**
+ * - Universe add/remove (only if NOT in inline-editable-field)
+ * - Deadline "Today" button (only if NOT in inline-editable-field)
+ * - Time unit conversion for estimated time (only if NOT in inline-editable-field)
+ * - Time unit conversion for log time (only if NOT in inline-editable-field)
+ * 
+ * **Note:** Most field-level functionality has been moved to dedicated field classes:
+ * - InlineUniversesField - handles universe selection
+ * - InlineEstimatedTimeField - handles estimated time
+ * - InlineDeadlineField - handles deadline
+ * - InlineLogTimeField - handles log time
+ * 
+ * TaskCardEditor now skips handling these fields if they're inside an `.inline-editable-field`.
  */
 class TaskCardEditor {
     constructor(taskId) {
@@ -90,9 +106,9 @@ class TaskCardEditor {
             this.elements.deadlineInput.addEventListener('input', () => this.updateStatusPillFromDeadline());
         }
         
-        // Today button (may be in inline editable field)
+        // Today button (skip if InlineDeadlineField is handling it)
         const todayBtn = document.querySelector(`.btn-today[data-task-id="${this.taskId}"]`);
-        if (todayBtn) {
+        if (todayBtn && !todayBtn.closest('.inline-editable-field')) {
             todayBtn.addEventListener('click', () => {
                 this.setDeadlineToday();
                 this.updateStatusPillFromDeadline();
@@ -100,7 +116,8 @@ class TaskCardEditor {
         }
         
         // Universe add/remove buttons (using event delegation)
-        if (this.elements.universesContainer) {
+        // Skip if InlineUniversesField is handling it (for inline editable fields)
+        if (this.elements.universesContainer && !this.elements.universesContainer.closest('.inline-editable-field')) {
             this.elements.universesContainer.addEventListener('click', (e) => {
                 if (e.target.classList.contains('remove-universe-btn')) {
                     this.removeUniverseRow(e.target);
@@ -108,7 +125,9 @@ class TaskCardEditor {
             });
         }
         
-            if (this.elements.addUniverseBtn) {
+            // Skip add universe button if InlineUniversesField is handling it
+            // (InlineUniversesField will handle add/remove for inline editable fields)
+            if (this.elements.addUniverseBtn && !this.elements.addUniverseBtn.closest('.inline-editable-field')) {
                 this.elements.addUniverseBtn.addEventListener('click', () => this.addUniverseRow());
             }
 
@@ -164,13 +183,14 @@ class TaskCardEditor {
                 });
             });
             
-            // Log form time unit radio buttons and input
+            // Log form time unit radio buttons and input (skip if InlineLogTimeField is handling it)
             const logForm = this.elements.editMode?.querySelector('.task-log-form');
             if (logForm) {
                 const logTimeInput = logForm.querySelector(`input[name="minutes"][id^="log-minutes-"]`);
                 const logTimeUnitRadios = logForm.querySelectorAll(`input[name="time_unit"][id^="log-time-unit-"]`);
                 
-                if (logTimeInput) {
+                // Skip if the input is inside an inline-editable-field (InlineLogTimeField handles it)
+                if (logTimeInput && !logTimeInput.closest('.inline-editable-field')) {
                     const originalMinutes = parseFloat(logTimeInput.dataset.originalMinutes) || 0;
                     logTimeInput.dataset.storedMinutes = originalMinutes.toString();
                     
@@ -180,9 +200,12 @@ class TaskCardEditor {
                 }
                 
                 logTimeUnitRadios.forEach(radio => {
-                    radio.addEventListener('change', (e) => {
-                        this.updateLogTimeDisplay(e.target.value, logTimeInput);
-                    });
+                    // Skip if the radio is inside an inline-editable-field
+                    if (!radio.closest('.inline-editable-field')) {
+                        radio.addEventListener('change', (e) => {
+                            this.updateLogTimeDisplay(e.target.value, logTimeInput);
+                        });
+                    }
                 });
             }
         
@@ -190,6 +213,7 @@ class TaskCardEditor {
     
     /**
      * Add a new universe row
+     * @deprecated Only used for non-inline fields. InlineUniversesField handles inline editable fields.
      */
     addUniverseRow() {
         const container = this.elements.universesContainer;
@@ -245,6 +269,7 @@ class TaskCardEditor {
     
     /**
      * Remove a universe row
+     * @deprecated Only used for non-inline fields. InlineUniversesField handles inline editable fields.
      */
     removeUniverseRow(btn) {
         const container = this.elements.universesContainer;
@@ -259,6 +284,7 @@ class TaskCardEditor {
     
     /**
      * Set deadline to today at 5pm
+     * @deprecated Only used for non-inline fields. InlineDeadlineField handles inline editable fields.
      */
     setDeadlineToday() {
         const input = this.elements.deadlineInput;
@@ -407,17 +433,18 @@ class TaskCardEditor {
         const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
         
         if (!storedMinutes) {
-            input.step = newUnit === 'hours' ? '0.25' : '1';
+            // Use TimeHelper for consistent step values
+            input.step = TimeHelper.getStepForUnit(newUnit);
             return;
         }
         
         if (newUnit === 'hours') {
             const hours = storedMinutes / 60;
             input.value = parseFloat(hours.toFixed(2));
-            input.step = '0.25';
+            input.step = TimeHelper.getStepForUnit('hours');
         } else {
             input.value = Math.round(storedMinutes);
-            input.step = '1';
+            input.step = TimeHelper.getStepForUnit('minutes');
         }
     }
     
@@ -435,8 +462,8 @@ class TaskCardEditor {
         const storedMinutes = parseFloat(input.dataset.storedMinutes) || 0;
         
         if (!storedMinutes) {
-            // If no value, just update step attribute
-            input.step = newUnit === 'hours' ? '0.25' : '1';
+            // If no value, just update step attribute using TimeHelper
+            input.step = TimeHelper.getStepForUnit(newUnit);
             return;
         }
         
@@ -445,13 +472,18 @@ class TaskCardEditor {
             const hours = storedMinutes / 60;
             // Show up to 2 decimal places
             input.value = parseFloat(hours.toFixed(2));
-            input.step = '0.25';
+            input.step = TimeHelper.getStepForUnit('hours');
         } else {
             input.value = Math.round(storedMinutes);
-            input.step = '1';
+            input.step = TimeHelper.getStepForUnit('minutes');
         }
     }
     
+    /**
+     * @deprecated This method is no longer used.
+     * Fields now save individually via InlineFieldEditor and TaskFieldSaver.
+     * Kept for reference but not attached to any event listener.
+     */
     async handleFormSubmit(e) {
         e.preventDefault();
         

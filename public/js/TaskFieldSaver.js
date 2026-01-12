@@ -30,6 +30,39 @@ class TaskFieldSaver {
         // Build form data with all current form values
         const formData = new FormData(form);
         
+        // Decode HTML entities in textarea/input values to prevent double-encoding
+        // This ensures we always send raw, unencoded values to the server
+        const textareas = form.querySelectorAll('textarea');
+        textareas.forEach(textarea => {
+            const currentValue = textarea.value;
+            if (currentValue && currentValue.includes('&#')) {
+                // Decode HTML entities
+                const temp = document.createElement('textarea');
+                temp.innerHTML = currentValue;
+                const decodedValue = temp.value;
+                if (decodedValue !== currentValue) {
+                    // Update FormData with decoded value
+                    formData.set(textarea.name, decodedValue);
+                }
+            }
+        });
+        
+        // Also decode text inputs that might have HTML entities
+        const textInputs = form.querySelectorAll('input[type="text"]');
+        textInputs.forEach(input => {
+            const currentValue = input.value;
+            if (currentValue && currentValue.includes('&#')) {
+                // Decode HTML entities
+                const temp = document.createElement('textarea');
+                temp.innerHTML = currentValue;
+                const decodedValue = temp.value;
+                if (decodedValue !== currentValue) {
+                    // Update FormData with decoded value
+                    formData.set(input.name, decodedValue);
+                }
+            }
+        });
+        
         // Override the specific field value
         if (fieldName === 'universe_ids') {
             // Handle universe_ids array
@@ -52,7 +85,14 @@ class TaskFieldSaver {
                 formData.set('deadline_at', '');
             }
         } else {
-            formData.set(fieldName, fieldValue);
+            // Decode HTML entities for text fields to prevent double-encoding
+            let decodedValue = fieldValue;
+            if (typeof fieldValue === 'string' && fieldValue.includes('&#')) {
+                const temp = document.createElement('textarea');
+                temp.innerHTML = fieldValue;
+                decodedValue = temp.value;
+            }
+            formData.set(fieldName, decodedValue);
         }
 
         // Ensure _method is set

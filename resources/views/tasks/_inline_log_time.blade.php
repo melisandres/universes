@@ -12,7 +12,7 @@
     $defaultUnit = 'hours'; // Default to hours for logging
 @endphp
 
-<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
+<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-task-id="{{ $task->id }}" data-no-auto-init="true">
     <label class="inline-field-label">Time</label>
     
     {{-- View Mode --}}
@@ -65,93 +65,21 @@
         </div>
         <div class="inline-field-actions">
             <button type="button" class="inline-field-save-btn" data-field-id="{{ $fieldId }}">Save</button>
-            <button type="button" class="inline-field-cancel-btn" data-field-id="{{ $fieldId }}">Cancel</button>
         </div>
     </div>
 </div>
 
-{{-- Initialize with custom formatting --}}
+{{-- Initialize with InlineLogTimeField class --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fieldId = '{{ $fieldId }}';
-    if (!window.inlineFieldEditors) window.inlineFieldEditors = {};
+    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
     
-    // Function to update display value from form inputs
-    function updateLogTimeDisplay() {
-        const timeInput = document.getElementById('log-minutes-{{ $task->id }}');
-        const viewValue = document.querySelector(`#inline-view-${fieldId} .inline-field-value`);
-        
-        if (!timeInput || !viewValue) return;
-        
-        const timeValue = timeInput.value;
-        if (!timeValue || timeValue === '') {
-            viewValue.textContent = 'Not logged';
-            return;
-        }
-        
-        // Find which unit is selected
-        const minutesRadio = document.getElementById('log-time-unit-minutes-{{ $fieldId }}');
-        const hoursRadio = document.getElementById('log-time-unit-hours-{{ $fieldId }}');
-        const unit = hoursRadio && hoursRadio.checked ? 'hours' : 'minutes';
-        
-        const numValue = parseFloat(timeValue);
-        if (isNaN(numValue)) {
-            viewValue.textContent = 'Not logged';
-            return;
-        }
-        
-        if (unit === 'hours') {
-            viewValue.textContent = numValue + ' hours';
-        } else {
-            viewValue.textContent = numValue + ' minutes';
-        }
-    }
-    
-    // Initialize the inline editor
-    window.inlineFieldEditors[fieldId] = new InlineFieldEditor(fieldId, {
-        formatValue: function(value) {
-            return value || 'Not logged';
-        },
-        onSave: function(newValue, oldValue, editor) {
-            // Update display from current form state
-            setTimeout(function() {
-                updateLogTimeDisplay();
-            }, 50);
-            return true; // Allow UI update
-        }
-    });
-    
-    // Update display when time or unit changes
-    const timeInput = document.getElementById('log-minutes-{{ $task->id }}');
-    const minutesRadio = document.getElementById('log-time-unit-minutes-{{ $fieldId }}');
-    const hoursRadio = document.getElementById('log-time-unit-hours-{{ $fieldId }}');
-    
-    if (timeInput) {
-        timeInput.addEventListener('input', function() {
-            const editElement = document.getElementById('inline-edit-' + fieldId);
-            if (editElement && !editElement.classList.contains('d-none')) {
-                updateLogTimeDisplay();
-            }
-        });
-    }
-    
-    if (minutesRadio) {
-        minutesRadio.addEventListener('change', updateLogTimeDisplay);
-    }
-    
-    if (hoursRadio) {
-        hoursRadio.addEventListener('change', updateLogTimeDisplay);
-    }
-    
-    // Update display immediately on page load
-    updateLogTimeDisplay();
-    
-    // Also update when entering edit mode
-    const editBtn = document.querySelector(`#inline-view-${fieldId} .inline-field-edit-btn`);
-    if (editBtn) {
-        editBtn.addEventListener('click', function() {
-            setTimeout(updateLogTimeDisplay, 10);
-        });
+    if (fieldElement) {
+        const config = {
+            taskId: parseInt('{{ $task->id }}', 10)
+        };
+        new InlineLogTimeField(fieldId, config);
     }
 });
 </script>

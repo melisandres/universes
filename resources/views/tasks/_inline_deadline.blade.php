@@ -51,133 +51,17 @@
     </div>
 </div>
 
-{{-- Initialize with custom formatting --}}
+{{-- Initialize with InlineDeadlineField class --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fieldId = '{{ $fieldId }}';
-    if (!window.inlineFieldEditors) window.inlineFieldEditors = {};
-    
-    // Function to update display value from form inputs
-    function updateDeadlineDisplay() {
-        const deadlineInput = document.getElementById('input-' + fieldId);
-        const viewValue = document.querySelector(`#inline-view-${fieldId} .inline-field-value`);
-        
-        if (!deadlineInput || !viewValue) return;
-        
-        const deadlineValue = deadlineInput.value;
-        if (!deadlineValue || deadlineValue === '') {
-            viewValue.textContent = 'no deadline';
-            return;
-        }
-        
-        // Convert datetime-local format (YYYY-MM-DDTHH:mm) to readable format
-        const date = new Date(deadlineValue);
-        if (isNaN(date.getTime())) {
-            viewValue.textContent = 'no deadline';
-            return;
-        }
-        
-        const formattedDate = date.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric', 
-            year: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-        });
-        
-        viewValue.textContent = 'deadline: ' + formattedDate;
-    }
-    
-    window.inlineFieldEditors[fieldId] = new InlineFieldEditor(fieldId, {
-        formatValue: function(value) {
-            if (!value || value === '') return 'no deadline';
-            
-            // Convert datetime-local format (YYYY-MM-DDTHH:mm) to readable format
-            const date = new Date(value);
-            if (isNaN(date.getTime())) return 'no deadline';
-            
-            const formattedDate = date.toLocaleDateString('en-US', { 
-                month: 'short', 
-                day: 'numeric', 
-                year: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-            
-            return 'deadline: ' + formattedDate;
-        },
-        onSave: async function(newValue, oldValue, editor) {
-            const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
-            if (!fieldElement) return false;
-            const taskId = parseInt(fieldElement.dataset.taskId, 10);
-            
-            const deadlineInput = document.getElementById('input-' + fieldId);
-            if (!deadlineInput) return false;
-            
-            const deadlineValue = deadlineInput.value || '';
-            const success = await TaskFieldSaver.saveField(taskId, 'deadline_at', deadlineValue);
-            
-            if (success) {
-                setTimeout(function() {
-                    updateDeadlineDisplay();
-                }, 50);
-                return true;
-            }
-            return false;
-        }
-    });
-    
-    // Update display when deadline changes
-    const deadlineInput = document.getElementById('input-' + fieldId);
-    if (deadlineInput) {
-        deadlineInput.addEventListener('change', function() {
-            const editElement = document.getElementById('inline-edit-' + fieldId);
-            if (editElement && !editElement.classList.contains('d-none')) {
-                updateDeadlineDisplay();
-            }
-        });
-        deadlineInput.addEventListener('input', function() {
-            const editElement = document.getElementById('inline-edit-' + fieldId);
-            if (editElement && !editElement.classList.contains('d-none')) {
-                updateDeadlineDisplay();
-            }
-        });
-    }
-    
-    // Update display immediately on page load
-    updateDeadlineDisplay();
-    
-    // Also update when entering edit mode
-    const editBtn = document.querySelector(`#inline-view-${fieldId} .inline-field-edit-btn`);
-    if (editBtn) {
-        editBtn.addEventListener('click', function() {
-            setTimeout(updateDeadlineDisplay, 10);
-        });
-    }
-    
-    // Handle "Today" button
     const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
-    const taskId = fieldElement ? fieldElement.dataset.taskId : null;
-    const todayBtn = taskId ? document.querySelector(`.btn-today[data-task-id="${taskId}"]`) : null;
-    if (todayBtn) {
-        todayBtn.addEventListener('click', function() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
-            const day = String(now.getDate()).padStart(2, '0');
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const datetimeValue = `${year}-${month}-${day}T${hours}:${minutes}`;
-            
-            const input = document.getElementById('input-' + fieldId);
-            if (input) {
-                input.value = datetimeValue;
-                // Update display immediately
-                setTimeout(updateDeadlineDisplay, 10);
-            }
-        });
+    
+    if (fieldElement) {
+        const config = {
+            taskId: parseInt('{{ $task->id }}', 10)
+        };
+        new InlineDeadlineField(fieldId, config);
     }
 });
 </script>

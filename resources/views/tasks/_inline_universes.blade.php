@@ -23,7 +23,7 @@
     }
 @endphp
 
-<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-no-auto-init="true">
+<div class="inline-editable-field" data-field-id="{{ $fieldId }}" data-task-id="{{ $task->id }}" data-no-auto-init="true">
     {{-- Label and Pencil (always visible) --}}
     <div class="inline-field-label-row">
         <label class="inline-field-label">Universes</label>
@@ -87,191 +87,17 @@
     </div>
 </div>
 
-{{-- Initialize with custom formatting --}}
+{{-- Initialize with InlineUniversesField class --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fieldId = '{{ $fieldId }}';
-    if (!window.inlineFieldEditors) window.inlineFieldEditors = {};
+    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
     
-    // Function to update display value from form inputs
-    function updateUniversesDisplay() {
-        const container = document.getElementById('universes-container-{{ $task->id }}');
-        const viewValue = document.querySelector(`#inline-view-${fieldId} .inline-field-value`);
-        
-        if (!container) {
-            console.warn('Universes container not found');
-            return;
-        }
-        
-        if (!viewValue) {
-            console.warn('View value element not found for field:', fieldId);
-            return;
-        }
-        
-        const rows = container.querySelectorAll('.universe-item-row');
-        const universeNames = [];
-        
-        // Find which radio is checked for primary
-        const checkedPrimaryRadio = container.querySelector('input[name="primary_universe"]:checked');
-        const primaryIndex = checkedPrimaryRadio ? parseInt(checkedPrimaryRadio.value) : -1;
-        
-        rows.forEach((row, index) => {
-            const select = row.querySelector('select[name="universe_ids[]"]');
-            if (!select) return;
-            
-            if (select.value && select.value !== '') {
-                const selectedOption = select.options[select.selectedIndex];
-                const name = selectedOption ? selectedOption.text.trim() : '';
-                if (name && name !== '— select universe —') {
-                    const isPrimary = (index === primaryIndex);
-                    universeNames.push(isPrimary ? '★ ' + name : name);
-                }
-            }
-        });
-        
-        const displayText = universeNames.length > 0 ? universeNames.join(', ') : 'None';
-        viewValue.textContent = displayText;
-    }
-    
-    // Initialize the inline editor with custom handling
-    // Note: This field has data-no-auto-init="true" so it won't be auto-initialized
-    const editor = new InlineFieldEditor(fieldId, {
-        formatValue: function(value) {
-            // This won't be called for complex fields, but we need it for the interface
-            return value || 'None';
-        },
-        onSave: async function(newValue, oldValue, editor) {
-            const container = document.getElementById('universes-container-{{ $task->id }}');
-            if (!container) return false;
-            
-            // Collect all universe IDs and primary index
-            const rows = container.querySelectorAll('.universe-item-row');
-            const universeIds = [];
-            let primaryIndex = 0;
-            
-            rows.forEach((row, index) => {
-                const select = row.querySelector('select[name="universe_ids[]"]');
-                const primaryRadio = row.querySelector(`input[name="primary_universe"][value="${index}"]`);
-                
-                if (select && select.value && select.value !== '') {
-                    universeIds.push(select.value);
-                    if (primaryRadio && primaryRadio.checked) {
-                        primaryIndex = universeIds.length - 1;
-                    }
-                }
-            });
-            
-            if (universeIds.length === 0) {
-                alert('At least one universe is required');
-                return false;
-            }
-            
-            // Save universes - we need to send both universe_ids and primary_universe
-            // Since TaskFieldSaver uses FormData, we'll need to handle this specially
-            const form = document.querySelector(`.task-edit-form-simple[data-task-id="{{ $task->id }}"]`);
-            if (!form) return false;
-            
-            const formData = new FormData(form);
-            formData.delete('universe_ids[]');
-            formData.delete('primary_universe');
-            
-            universeIds.forEach(id => {
-                formData.append('universe_ids[]', id);
-            });
-            formData.append('primary_universe', primaryIndex);
-            
-            if (!formData.has('_method')) {
-                formData.append('_method', 'PUT');
-            }
-            
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-            if (!csrfToken) return false;
-            
-            try {
-                const response = await fetch(form.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: formData
-                });
-                
-                if (response.redirected) return false;
-                
-                const data = await response.json();
-                
-                if (!response.ok || !data.success) {
-                    let errorMessage = 'Error updating universes';
-                    if (data.errors) {
-                        errorMessage = Object.values(data.errors).flat().join('\n');
-                    } else if (data.message) {
-                        errorMessage = data.message;
-                    }
-                    alert('Error: ' + errorMessage);
-                    return false;
-                }
-                
-                setTimeout(function() {
-                    updateUniversesDisplay();
-                }, 50);
-                return true;
-            } catch (error) {
-                console.error('Error saving universes:', error);
-                alert('Error: ' + (error.message || 'Error updating universes'));
-                return false;
-            }
-        }
-    });
-    
-    window.inlineFieldEditors[fieldId] = editor;
-    
-    // Update display immediately on page load
-    updateUniversesDisplay();
-    
-    // Also update when entering edit mode to reflect current state
-    const editBtn = document.querySelector(`#inline-view-${fieldId} .inline-field-edit-btn`);
-    if (editBtn) {
-        editBtn.addEventListener('click', function() {
-            // Small delay to ensure edit mode is visible
-            setTimeout(updateUniversesDisplay, 10);
-        });
-    }
-    
-    // Update display when universes change (add/remove/select change)
-    const container = document.getElementById('universes-container-{{ $task->id }}');
-    if (container) {
-        // Use event delegation for dynamic content
-        container.addEventListener('change', function(e) {
-            if (e.target.matches('select[name="universe_ids[]"]') || e.target.matches('input[name="primary_universe"]')) {
-                // Only update if we're in edit mode
-                const editElement = document.getElementById('inline-edit-' + fieldId);
-                if (editElement && !editElement.classList.contains('d-none')) {
-                    updateUniversesDisplay();
-                }
-            }
-        });
-    }
-    
-    // Handle add universe button (if it exists, it's handled by TaskCardEditor, but we can update display)
-    const addBtn = document.querySelector(`.add-universe-btn[data-task-id="{{ $task->id }}"]`);
-    if (addBtn) {
-        const originalClick = addBtn.onclick;
-        addBtn.addEventListener('click', function() {
-            // Wait a bit for the new row to be added
-            setTimeout(updateUniversesDisplay, 100);
-        });
-    }
-    
-    // Handle remove universe button
-    if (container) {
-        container.addEventListener('click', function(e) {
-            if (e.target.matches('.remove-universe-btn')) {
-                // Wait a bit for the row to be removed
-                setTimeout(updateUniversesDisplay, 100);
-            }
-        });
+    if (fieldElement) {
+        const config = {
+            taskId: parseInt('{{ $task->id }}', 10)
+        };
+        new InlineUniversesField(fieldId, config);
     }
 });
 </script>

@@ -86,132 +86,17 @@
     </div>
 </div>
 
-{{-- Initialize with custom formatting --}}
+{{-- Initialize with InlineEstimatedTimeField class --}}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const fieldId = '{{ $fieldId }}';
-    if (!window.inlineFieldEditors) window.inlineFieldEditors = {};
+    const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
     
-    // Function to update display value from form inputs
-    function updateEstimatedTimeDisplay() {
-        const timeInput = document.getElementById('input-' + fieldId);
-        const viewValue = document.querySelector(`#inline-view-${fieldId} .inline-field-value`);
-        
-        if (!timeInput || !viewValue) return;
-        
-        const timeValue = timeInput.value;
-        if (!timeValue || timeValue === '') {
-            viewValue.textContent = 'Not set';
-            return;
-        }
-        
-        // Find which unit is selected
-        const minutesRadio = document.getElementById('time-unit-minutes-' + fieldId);
-        const hoursRadio = document.getElementById('time-unit-hours-' + fieldId);
-        const unit = hoursRadio && hoursRadio.checked ? 'hours' : 'minutes';
-        
-        const numValue = parseFloat(timeValue);
-        if (isNaN(numValue)) {
-            viewValue.textContent = 'Not set';
-            return;
-        }
-        
-        if (unit === 'hours') {
-            viewValue.textContent = numValue + ' hours';
-        } else {
-            viewValue.textContent = numValue + ' minutes';
-        }
-    }
-    
-    // Initialize the inline editor
-    window.inlineFieldEditors[fieldId] = new InlineFieldEditor(fieldId, {
-        formatValue: function(value) {
-            if (!value || value === '') return 'Not set';
-            
-            const timeInput = document.getElementById('input-' + fieldId);
-            const minutesRadio = document.getElementById('time-unit-minutes-' + fieldId);
-            const hoursRadio = document.getElementById('time-unit-hours-' + fieldId);
-            const unit = hoursRadio && hoursRadio.checked ? 'hours' : 'minutes';
-            
-            const numValue = parseFloat(value);
-            if (isNaN(numValue)) return 'Not set';
-            
-            if (unit === 'hours') {
-                return numValue + ' hours';
-            } else {
-                return numValue + ' minutes';
-            }
-        },
-        onSave: async function(newValue, oldValue, editor) {
-            const fieldElement = document.querySelector(`[data-field-id="${fieldId}"]`);
-            if (!fieldElement) return false;
-            const taskId = parseInt(fieldElement.dataset.taskId, 10);
-            
-            const timeInput = document.getElementById('input-' + fieldId);
-            const minutesRadio = document.getElementById('time-unit-minutes-' + fieldId);
-            const hoursRadio = document.getElementById('time-unit-hours-' + fieldId);
-            const unit = hoursRadio && hoursRadio.checked ? 'hours' : 'minutes';
-            
-            if (!timeInput || !timeInput.value) {
-                // Clear estimated time
-                const success = await TaskFieldSaver.saveField(taskId, 'estimated_time', '', { timeUnit: 'hours' });
-                if (success) {
-                    setTimeout(function() {
-                        updateEstimatedTimeDisplay();
-                    }, 50);
-                    return true;
-                }
-                return false;
-            }
-            
-            const timeValue = parseFloat(timeInput.value);
-            if (isNaN(timeValue)) {
-                return false;
-            }
-            
-            const success = await TaskFieldSaver.saveField(taskId, 'estimated_time', timeValue, { timeUnit: unit });
-            
-            if (success) {
-                setTimeout(function() {
-                    updateEstimatedTimeDisplay();
-                }, 50);
-                return true;
-            }
-            return false;
-        }
-    });
-    
-    // Update display when time or unit changes
-    const timeInput = document.getElementById('input-' + fieldId);
-    const minutesRadio = document.getElementById('time-unit-minutes-' + fieldId);
-    const hoursRadio = document.getElementById('time-unit-hours-' + fieldId);
-    
-    if (timeInput) {
-        timeInput.addEventListener('input', function() {
-            const editElement = document.getElementById('inline-edit-' + fieldId);
-            if (editElement && !editElement.classList.contains('d-none')) {
-                updateEstimatedTimeDisplay();
-            }
-        });
-    }
-    
-    if (minutesRadio) {
-        minutesRadio.addEventListener('change', updateEstimatedTimeDisplay);
-    }
-    
-    if (hoursRadio) {
-        hoursRadio.addEventListener('change', updateEstimatedTimeDisplay);
-    }
-    
-    // Update display immediately on page load
-    updateEstimatedTimeDisplay();
-    
-    // Also update when entering edit mode
-    const editBtn = document.querySelector(`#inline-view-${fieldId} .inline-field-edit-btn`);
-    if (editBtn) {
-        editBtn.addEventListener('click', function() {
-            setTimeout(updateEstimatedTimeDisplay, 10);
-        });
+    if (fieldElement) {
+        const config = {
+            taskId: parseInt('{{ $task->id }}', 10)
+        };
+        new InlineEstimatedTimeField(fieldId, config);
     }
 });
 </script>
