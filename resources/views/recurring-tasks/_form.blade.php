@@ -1,5 +1,9 @@
+@php
+    // Decode HTML entities to prevent double-encoding
+    $decodedName = html_entity_decode(old('name', $recurringTask->name ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+@endphp
 <label>Name</label><br>
-<input type="text" name="name" value="{{ old('name', $recurringTask->name ?? '') }}" required><br><br>
+<input type="text" name="name" value="{{ $decodedName }}" required><br><br>
 
 <label>Universes (optional - at least one required to create first task instance)</label><br>
 <div id="universes-container">
@@ -73,8 +77,12 @@ Every <input type="number" name="frequency_interval" min="1" value="{{ old('freq
 <label>Default Duration (minutes, optional)</label><br>
 <input type="number" name="default_duration_minutes" min="0" value="{{ old('default_duration_minutes', $recurringTask->default_duration_minutes ?? '') }}"><br><br>
 
+@php
+    // Decode HTML entities to prevent double-encoding
+    $decodedNotes = html_entity_decode(old('notes', $recurringTask->notes ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+@endphp
 <label>Notes (optional)</label><br>
-<textarea name="notes">{{ old('notes', $recurringTask->notes ?? '') }}</textarea><br><br>
+<textarea name="notes">{{ $decodedNotes }}</textarea><br><br>
 
 <label>
     <input type="checkbox" name="active" value="1" @checked(old('active', $recurringTask->active ?? true))>

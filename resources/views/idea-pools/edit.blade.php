@@ -9,11 +9,16 @@
     @csrf
     @method('PUT')
 
+    @php
+        // Decode HTML entities to prevent double-encoding
+        $decodedName = html_entity_decode($ideaPool->name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decodedDescription = html_entity_decode($ideaPool->description ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    @endphp
     <label>Name</label><br>
-    <input type="text" name="name" value="{{ $ideaPool->name }}" required><br><br>
+    <input type="text" name="name" value="{{ $decodedName }}" required><br><br>
 
     <label>Description (optional)</label><br>
-    <textarea name="description">{{ $ideaPool->description }}</textarea><br><br>
+    <textarea name="description">{{ $decodedDescription }}</textarea><br><br>
 
     <label>Universes (optional)</label><br>
     <div id="universes-container">

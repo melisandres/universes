@@ -51,13 +51,23 @@
         @if($customEdit)
             @include($customEdit, ['fieldId' => $fieldId, 'name' => $name, 'value' => $value, 'required' => $required])
         @elseif($type === 'textarea')
+            @php
+                // Decode HTML entities to prevent double-encoding
+                // Decode iteratively to handle double/triple-encoded entities
+                $decodedValue = $value;
+                $previousValue = '';
+                while ($decodedValue !== $previousValue) {
+                    $previousValue = $decodedValue;
+                    $decodedValue = html_entity_decode($decodedValue, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                }
+            @endphp
             <textarea 
                 name="{{ $name }}" 
                 id="input-{{ $fieldId }}"
                 class="inline-field-input"
                 rows="{{ $rows }}"
                 @if($required) required @endif
-            >{{ $value }}</textarea>
+            >{{ $decodedValue }}</textarea>
         @elseif($type === 'select')
             <select 
                 name="{{ $name }}" 
@@ -72,12 +82,24 @@
                 @endforeach
             </select>
         @else
+            @php
+                // Decode HTML entities to prevent double-encoding
+                // Decode iteratively to handle double/triple-encoded entities
+                // Blade's {{ }} will escape it again, but we want the raw value
+                // The browser will handle escaping when the form is submitted
+                $decodedValue = $value;
+                $previousValue = '';
+                while ($decodedValue !== $previousValue) {
+                    $previousValue = $decodedValue;
+                    $decodedValue = html_entity_decode($decodedValue, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                }
+            @endphp
             <input 
                 type="{{ $type }}" 
                 name="{{ $name }}" 
                 id="input-{{ $fieldId }}"
                 class="inline-field-input"
-                value="{{ $value }}"
+                value="{{ $decodedValue }}"
                 @if($required) required @endif
             >
         @endif

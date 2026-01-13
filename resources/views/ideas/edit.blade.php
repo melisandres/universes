@@ -59,14 +59,20 @@
     </div>
     <button type="button" class="add-idea-pool-btn" style="margin-top: 0.5rem; padding: 0.35rem 0.75rem; font-size: 0.85rem;">+ Add Idea Pool</button><br><br>
 
+    @php
+        // Decode HTML entities to prevent double-encoding
+        $decodedTitle = html_entity_decode($idea->title ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decodedBody = html_entity_decode($idea->body ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decodedNotes = html_entity_decode($idea->notes ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    @endphp
     <label>Title (optional)</label><br>
-    <input type="text" name="title" value="{{ $idea->title }}"><br><br>
+    <input type="text" name="title" value="{{ $decodedTitle }}"><br><br>
 
     <label>Body</label><br>
-    <textarea name="body" required>{{ $idea->body }}</textarea><br><br>
+    <textarea name="body" required>{{ $decodedBody }}</textarea><br><br>
 
     <label>Notes (optional)</label><br>
-    <textarea name="notes">{{ $idea->notes }}</textarea><br><br>
+    <textarea name="notes">{{ $decodedNotes }}</textarea><br><br>
 
     <label>Status (optional)</label><br>
     <select name="status">

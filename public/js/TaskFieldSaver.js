@@ -31,42 +31,13 @@ class TaskFieldSaver {
         }
 
         // Build form data with all current form values
+        // Note: The browser automatically decodes HTML entities when reading input.value,
+        // so FormData will already contain properly decoded values. We don't need to decode again.
         const formData = new FormData(form);
         
-        // Decode HTML entities in textarea/input values to prevent double-encoding
-        // This ensures we always send raw, unencoded values to the server
-        const textareas = form.querySelectorAll('textarea');
-        textareas.forEach(textarea => {
-            const currentValue = textarea.value;
-            if (currentValue && currentValue.includes('&#')) {
-                // Decode HTML entities
-                const temp = document.createElement('textarea');
-                temp.innerHTML = currentValue;
-                const decodedValue = temp.value;
-                if (decodedValue !== currentValue) {
-                    // Update FormData with decoded value
-                    formData.set(textarea.name, decodedValue);
-                }
-            }
-        });
-        
-        // Also decode text inputs that might have HTML entities
-        const textInputs = form.querySelectorAll('input[type="text"]');
-        textInputs.forEach(input => {
-            const currentValue = input.value;
-            if (currentValue && currentValue.includes('&#')) {
-                // Decode HTML entities
-                const temp = document.createElement('textarea');
-                temp.innerHTML = currentValue;
-                const decodedValue = temp.value;
-                if (decodedValue !== currentValue) {
-                    // Update FormData with decoded value
-                    formData.set(input.name, decodedValue);
-                }
-            }
-        });
-        
         // Override the specific field value
+        // The fieldValue parameter is already decoded by the browser (from input.value),
+        // so we can use it directly without additional decoding
         if (fieldName === 'universe_ids') {
             // Handle universe_ids array
             formData.delete('universe_ids[]');
@@ -88,14 +59,9 @@ class TaskFieldSaver {
                 formData.set('deadline_at', '');
             }
         } else {
-            // Decode HTML entities for text fields to prevent double-encoding
-            let decodedValue = fieldValue;
-            if (typeof fieldValue === 'string' && fieldValue.includes('&#')) {
-                const temp = document.createElement('textarea');
-                temp.innerHTML = fieldValue;
-                decodedValue = temp.value;
-            }
-            formData.set(fieldName, decodedValue);
+            // For text fields, use the value directly
+            // The browser has already decoded HTML entities when reading from input.value
+            formData.set(fieldName, fieldValue);
         }
 
         // Ensure _method is set

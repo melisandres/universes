@@ -20,7 +20,17 @@
                     <span class="status-pill status-pill-{{ $task->getComputedStatus() }}" id="status-pill-edit">{{ $task->getComputedStatus() }}</span>
                     <label style="margin: 0;">Name</label>
                 </div>
-                <input type="text" name="name" value="{{ $task->name }}" required style="width: 100%; max-width: 500px;">
+                @php
+                    // Decode HTML entities to prevent double-encoding
+                    // Decode iteratively to handle double/triple-encoded entities
+                    $decodedName = $task->name;
+                    $previousValue = '';
+                    while ($decodedName !== $previousValue) {
+                        $previousValue = $decodedName;
+                        $decodedName = html_entity_decode($decodedName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    }
+                @endphp
+                <input type="text" name="name" value="{{ $decodedName }}" required style="width: 100%; max-width: 500px;">
             </div>
             <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; padding-bottom: 0.5rem;">
                 <label style="display: flex; align-items: center; gap: 0.5rem; margin: 0; white-space: nowrap;">
@@ -77,7 +87,17 @@
     {{-- Description --}}
     <div style="margin-bottom: 1rem;">
         <label>Description</label><br>
-        <textarea name="description" rows="4" placeholder="Optional" style="max-width: 500px;">{{ $task->description }}</textarea>
+        @php
+            // Decode HTML entities to prevent double-encoding
+            // Decode iteratively to handle double/triple-encoded entities
+            $decodedDescription = $task->description ?? '';
+            $previousValue = '';
+            while ($decodedDescription !== $previousValue) {
+                $previousValue = $decodedDescription;
+                $decodedDescription = html_entity_decode($decodedDescription, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+        @endphp
+        <textarea name="description" rows="4" placeholder="Optional" style="max-width: 500px;">{{ $decodedDescription }}</textarea>
     </div>
 
     {{-- Deadline with Today button (only shown if checkbox is checked) --}}

@@ -119,14 +119,18 @@ class InlineFieldEditor {
     enterEditMode() {
         if (!this.viewElement || !this.editElement) return;
         
-        // Decode HTML entities in textarea/input before reading original value
-        // This ensures we always work with raw, unencoded values and prevents double-encoding
+        // The browser automatically decodes HTML entities when reading input.value
+        // So we can read the value directly. Only decode if we detect encoded entities
+        // (handles edge cases where entities weren't properly decoded)
         if (this.inputElement && (this.inputElement.tagName === 'TEXTAREA' || this.inputElement.tagName === 'INPUT')) {
             const currentValue = this.inputElement.value;
-            const decodedValue = this.decodeHtmlEntities(currentValue);
-            if (currentValue !== decodedValue) {
-                // Update the input with decoded value if it was encoded
-                this.inputElement.value = decodedValue;
+            // Only decode if we detect HTML entities (handles double-encoding edge cases)
+            if (currentValue && (currentValue.includes('&#') || currentValue.includes('&amp;') || currentValue.includes('&quot;') || currentValue.includes('&apos;') || currentValue.includes('&lt;') || currentValue.includes('&gt;'))) {
+                const decodedValue = this.decodeHtmlEntities(currentValue);
+                if (currentValue !== decodedValue) {
+                    // Update the input with decoded value if it was encoded
+                    this.inputElement.value = decodedValue;
+                }
             }
         }
         
@@ -176,12 +180,18 @@ class InlineFieldEditor {
     getInputValue() {
         if (!this.inputElement) return '';
         
+        // The browser automatically decodes HTML entities when reading input.value
+        // So we can use the value directly without additional decoding
+        // However, if there are any remaining encoded entities (edge case), decode them
         let value = this.inputElement.value;
         
-        // Decode HTML entities from textarea/input values
-        // This prevents double-encoding issues when Blade templates HTML-encode values
+        // Only decode if we detect encoded entities (handles edge cases of double-encoding)
+        // In normal cases, the browser has already decoded, so this won't change the value
         if (this.inputElement.tagName === 'TEXTAREA' || this.inputElement.tagName === 'INPUT') {
-            value = this.decodeHtmlEntities(value);
+            // Check if there are any HTML entities that weren't decoded by the browser
+            if (value && (value.includes('&#') || value.includes('&amp;') || value.includes('&quot;') || value.includes('&apos;') || value.includes('&lt;') || value.includes('&gt;'))) {
+                value = this.decodeHtmlEntities(value);
+            }
         }
         
         return value;
@@ -203,15 +213,26 @@ class InlineFieldEditor {
      * Decode HTML entities in a string
      * Prevents double-encoding issues when updating display values
      * Handles cases where Blade templates HTML-encode values in textarea content
+     * Also handles double-encoded entities (e.g., &amp;amp;quot; -> &quot; -> ")
      */
     decodeHtmlEntities(text) {
         if (!text || typeof text !== 'string') return text;
         
         // Use a temporary textarea to decode HTML entities
         // This handles entities like &#039; (apostrophe), &amp; (ampersand), etc.
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = text;
-        return textarea.value;
+        // We decode multiple times to handle double-encoded entities
+        let decoded = text;
+        let previousDecoded = '';
+        
+        // Keep decoding until no more changes occur (handles double/triple encoding)
+        while (decoded !== previousDecoded) {
+            previousDecoded = decoded;
+            const textarea = document.createElement('textarea');
+            textarea.innerHTML = decoded;
+            decoded = textarea.value;
+        }
+        
+        return decoded;
     }
     
     handleSave() {
