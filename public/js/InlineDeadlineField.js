@@ -221,12 +221,19 @@ class InlineDeadlineField {
             setTimeout(() => {
                 this.updateDisplay();
             }, 100);
+            
+            // Update status field and CSS classes based on deadline
+            if (window.TaskStatusManager) {
+                window.TaskStatusManager.updateFromDeadline(this.taskId, deadlineValue);
+            }
+            
             return true;
         }
         
         console.warn('InlineDeadlineField: Save failed');
         return false;
     }
+    
 }
 
 // Expose to window for global access

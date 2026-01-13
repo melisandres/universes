@@ -2,7 +2,7 @@
     /* Task Status Colors */
     --task-status-open: #28a745;      /* Green */
     --task-status-late: #dc3545;      /* Red */
-    --task-status-skipped: #e91e63;   /* Pink */
+    --task-status-skipped: #f4b080;   /* Pink */
     --task-status-completed: #6c757d; /* Gray */
 }
 

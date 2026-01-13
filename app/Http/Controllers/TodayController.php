@@ -17,6 +17,9 @@ class TodayController extends Controller
     {
         $today = now();
         
+        // Update task statuses based on deadlines before loading
+        Task::updateOverdueStatuses();
+        
         // Get visible universes
         $visibleUniverses = Universe::visibleForToday()
             ->orderBy('name')

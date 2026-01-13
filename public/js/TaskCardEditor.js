@@ -5,7 +5,7 @@
  * 
  * **Core Card Functionality:**
  * - Edit mode toggle (expand/collapse)
- * - Task status pill updates (based on deadline)
+ * - Task status updates (handled by TaskStatusManager)
  * - Complete checkbox with delay
  * - Skip task button
  * - Delete task button
@@ -38,7 +38,13 @@ class TaskCardEditor {
         this.parseDataAttributes();
         this.cacheElements();
         this.attachEventListeners();
-        this.updateStatusPillFromDeadline(); // Initialize status pill based on deadline
+        // Initialize status - use TaskStatusManager if available
+        if (window.TaskStatusManager) {
+            window.TaskStatusManager.recalculateStatus(this.taskId);
+        } else {
+            // Fallback: update status from deadline (legacy support)
+            this.updateStatusFromDeadline();
+        }
     }
     
     /**
@@ -106,10 +112,16 @@ class TaskCardEditor {
                 this.elements.completeCheckbox.addEventListener('change', this._handlers.completeCheckboxChange);
             }
         
-        // Deadline input change - update status pill
-        if (this.elements.deadlineInput) {
-            this._handlers.deadlineChange = () => this.updateStatusPillFromDeadline();
-            this._handlers.deadlineInput = () => this.updateStatusPillFromDeadline();
+        // Deadline input change - update status (only for legacy deadline inputs, not inline fields)
+        if (this.elements.deadlineInput && !this.elements.deadlineInput.closest('.inline-editable-field')) {
+            this._handlers.deadlineChange = () => {
+                if (window.TaskStatusManager) {
+                    window.TaskStatusManager.recalculateStatus(this.taskId);
+                } else {
+                    this.updateStatusFromDeadline();
+                }
+            };
+            this._handlers.deadlineInput = this._handlers.deadlineChange;
             this.elements.deadlineInput.addEventListener('change', this._handlers.deadlineChange);
             this.elements.deadlineInput.addEventListener('input', this._handlers.deadlineInput);
         }
@@ -119,7 +131,11 @@ class TaskCardEditor {
         if (todayBtn && !todayBtn.closest('.inline-editable-field')) {
             this._handlers.todayBtnClick = () => {
                 this.setDeadlineToday();
-                this.updateStatusPillFromDeadline();
+                if (window.TaskStatusManager) {
+                    window.TaskStatusManager.recalculateStatus(this.taskId);
+                } else {
+                    this.updateStatusFromDeadline();
+                }
             };
             todayBtn.addEventListener('click', this._handlers.todayBtnClick);
         }
@@ -315,21 +331,29 @@ class TaskCardEditor {
     }
     
     /**
-     * Updates the task card status class based on the deadline value.
-     * Status is "late" if deadline is in the past (not today), otherwise "open".
+     * Updates the task card status based on deadline (legacy fallback only)
+     * This method is only used if TaskStatusManager is not available.
+     * For new code, use TaskStatusManager.recalculateStatus() instead.
+     * @deprecated Use TaskStatusManager.recalculateStatus() instead
      */
-    updateStatusPillFromDeadline() {
-        const deadlineCheckbox = this.elements.deadlineCheckbox;
-        const deadlineInput = this.elements.deadlineInput;
-
-        // If no deadline checkbox or it's unchecked, status is "open"
-        if (!deadlineCheckbox || !deadlineCheckbox.checked || !deadlineInput || !deadlineInput.value) {
-            this.setTaskStatus('open');
-            return;
+    updateStatusFromDeadline() {
+        // This is a legacy fallback - TaskStatusManager should always be available
+        // If we reach here, it means TaskStatusManager failed to load
+        Logger.warn('TaskCardEditor: Using legacy updateStatusFromDeadline - TaskStatusManager not available', { taskId: this.taskId });
+        
+        // Get deadline from inline field or legacy field
+        let deadlineValue = null;
+        
+        // Try inline deadline field first
+        const inlineDeadlineInput = document.querySelector(`input[id^="input-deadline-${this.taskId}"].inline-field-deadline-input`);
+        if (inlineDeadlineInput && inlineDeadlineInput.value) {
+            deadlineValue = inlineDeadlineInput.value;
+        } else if (this.elements.deadlineInput && this.elements.deadlineInput.value) {
+            // Fallback to legacy deadline input (if it exists)
+            deadlineValue = this.elements.deadlineInput.value;
         }
-
-        // Parse the deadline value
-        const deadlineValue = deadlineInput.value;
+        
+        // If no deadline value, status is "open"
         if (!deadlineValue) {
             this.setTaskStatus('open');
             return;
@@ -337,6 +361,11 @@ class TaskCardEditor {
 
         // Parse datetime-local format (YYYY-MM-DDTHH:mm)
         const deadline = new Date(deadlineValue);
+        if (isNaN(deadline.getTime())) {
+            this.setTaskStatus('open');
+            return;
+        }
+        
         const now = new Date();
 
         // Compare dates (ignore time for "today" check)
@@ -641,6 +670,10 @@ class TaskCardEditor {
             
             const data = await response.json();
             if (data.success) {
+                // Update status to "completed" without reloading
+                if (window.TaskStatusManager) {
+                    window.TaskStatusManager.updateToCompleted(this.taskId);
+                }
                 // Reload page to reflect changes
                 window.location.reload();
             } else {
@@ -739,7 +772,14 @@ class TaskCardEditor {
 
             const data = await response.json();
             if (data.success) {
-                // Reload page to reflect changes
+                // Update status to "skipped" without reloading
+                if (window.TaskStatusManager) {
+                    window.TaskStatusManager.updateToSkipped(this.taskId);
+                }
+                // Update skip button data attribute
+                skipBtn.dataset.isSkipped = '1';
+                skipBtn.style.display = 'none';
+                // Reload page to reflect changes (server may have created next recurring instance)
                 window.location.reload();
             } else {
                 alert('Error: ' + (data.message || 'Unknown error'));

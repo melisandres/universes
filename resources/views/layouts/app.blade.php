@@ -24,6 +24,7 @@
     {{-- Core dependencies --}}
     <script src="{{ asset('js/InlineFieldEditor.js') }}"></script>
     <script src="{{ asset('js/TaskFieldSaver.js') }}"></script>
+    <script src="{{ asset('js/TaskStatusManager.js') }}"></script>
     <script src="{{ asset('js/UniverseFieldSaver.js') }}"></script>
     
     {{-- Utility classes --}}

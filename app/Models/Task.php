@@ -93,6 +93,7 @@ class Task extends Model
     }
 
     // Helper method to get computed status (for display)
+    // This computes status based on current state, not just database value
     public function getComputedStatus(): string
     {
         if ($this->completed_at !== null) {
@@ -101,10 +102,62 @@ class Task extends Model
         if ($this->skipped_at !== null) {
             return 'skipped';
         }
-        if ($this->deadline_at && $this->deadline_at->isPast() && !$this->deadline_at->isToday()) {
+        
+        // If database status is "late", trust it (it was set by updateOverdueStatuses)
+        // Check this FIRST before checking deadline
+        // Try multiple ways to get the status value
+        $statusValue = $this->getAttribute('status') ?? $this->status ?? null;
+        if ($statusValue === 'late') {
             return 'late';
         }
+        
+        // Check deadline to determine if task is late
+        // A task is late if deadline is in the past and not today
+        if ($this->deadline_at) {
+            // Ensure deadline_at is a Carbon instance
+            $deadline = $this->deadline_at instanceof \Carbon\Carbon 
+                ? $this->deadline_at 
+                : \Carbon\Carbon::parse($this->deadline_at);
+            
+            if ($deadline->isPast() && !$deadline->isToday()) {
+                return 'late';
+            }
+        }
+        
+        // Return the stored status or default to 'open'
         return $this->status ?: 'open';
+    }
+
+    /**
+     * Update task statuses based on deadlines
+     * This should be called periodically or when loading tasks to ensure
+     * the database status field reflects the current deadline state
+     */
+    public static function updateOverdueStatuses()
+    {
+        $today = now()->copy()->startOfDay();
+        
+        // Update tasks that should be marked as late
+        // Deadline is in the past (before today) and task is not completed/skipped
+        static::whereNull('completed_at')
+            ->whereNull('skipped_at')
+            ->whereNotNull('deadline_at')
+            ->where('deadline_at', '<', $today)
+            ->where(function ($query) {
+                $query->where('status', '!=', 'late')
+                      ->orWhereNull('status');
+            })
+            ->update(['status' => 'late']);
+        
+        // Update tasks that were marked as late but deadline is now today or in the future
+        static::whereNull('completed_at')
+            ->whereNull('skipped_at')
+            ->where('status', 'late')
+            ->where(function ($query) use ($today) {
+                $query->whereNull('deadline_at')
+                      ->orWhere('deadline_at', '>=', $today);
+            })
+            ->update(['status' => 'open']);
     }
 
     /**

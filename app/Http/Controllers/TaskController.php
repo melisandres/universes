@@ -16,6 +16,9 @@ class TaskController extends Controller
      */
     public function index()
     {
+        // Update task statuses based on deadlines before loading
+        Task::updateOverdueStatuses();
+        
         $tasks = Task::with(['universeItems.universe', 'recurringTask'])
         ->whereNull('completed_at')
         ->orderBy('deadline_at')
@@ -271,14 +274,24 @@ class TaskController extends Controller
         }
         
         // Auto-update status to "late" if deadline has passed (unless completed/skipped)
+        // Only override status if deadline_at is actually being changed, or if status is not explicitly set
         if (isset($validated['deadline_at']) && $validated['deadline_at']) {
             $deadline = \Carbon\Carbon::parse($validated['deadline_at']);
             if ($task->completed_at === null && $task->skipped_at === null) {
-                if ($deadline->isPast() && !$deadline->isToday()) {
+                // Only update status if it's not explicitly set in the request, or if deadline is past
+                if (!isset($validated['status']) || $validated['status'] === null) {
+                    // Status not explicitly set - compute it from deadline
+                    if ($deadline->isPast() && !$deadline->isToday()) {
+                        $validated['status'] = 'late';
+                    } else {
+                        $validated['status'] = 'open';
+                    }
+                } elseif ($deadline->isPast() && !$deadline->isToday()) {
+                    // Deadline is past - always set to late (even if status was set to something else)
                     $validated['status'] = 'late';
-                } elseif (isset($validated['status']) && $validated['status'] === 'late' && !$deadline->isPast()) {
-                    $validated['status'] = 'open';
                 }
+                // If status is explicitly set to 'late' and deadline is not past, keep the status as-is
+                // Don't override it to 'open' - trust the explicit status value
             }
         }
         

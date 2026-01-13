@@ -13,11 +13,16 @@
             }
         }
     }
+    
+    // Compute status for display - use the Task model's getComputedStatus() method
+    // This ensures consistency and handles all the logic in one place
+    // The hidden input uses $task->status directly, but for display we use computed status
+    $computedStatus = $task->getComputedStatus();
 @endphp
 
-<li class="task-item task-status-{{ $task->getComputedStatus() }} @if($task->created_at && $task->created_at->isToday()) task-created-today @endif">
+<li class="task-item task-status-{{ $computedStatus }} @if($task->created_at && $task->created_at->isToday()) task-created-today @endif">
     {{-- Simple View Mode --}}
-    <div id="task-view-{{ $task->id }}" class="task-view task-status-{{ $task->getComputedStatus() }}">
+    <div id="task-view-{{ $task->id }}" class="task-view task-status-{{ $computedStatus }}">
         <input type="checkbox" class="complete-task-checkbox" data-task-id="{{ $task->id }}" @checked($task->completed_at !== null)>
         @if($task->isRecurring())
             <span class="recurring-icon" title="Recurring">🔄</span>

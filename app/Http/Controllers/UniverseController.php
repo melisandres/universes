@@ -12,8 +12,12 @@ class UniverseController extends Controller
      */
     public function index()
     {
+        // Update task statuses based on deadlines before loading
+        \App\Models\Task::updateOverdueStatuses();
+        
         // Get root universes (those without a parent) and eager load children recursively
         // Load tasks with completed_at filter at the relationship level
+        // hasManyThrough automatically loads all task fields including deadline_at
         $universes = Universe::whereNull('parent_id')
             ->with(['primaryTasks' => function ($query) {
                 $query->whereNull('completed_at');

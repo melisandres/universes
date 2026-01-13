@@ -52,6 +52,9 @@ class InlineUniversesField {
         this.setupEventListeners();
         this.updateSelectOptions(); // Disable already-selected universes in initial selects
         this.updateDisplay();
+        
+        // Store the initial primary universe ID for comparison when saving
+        this.initialPrimaryUniverseId = this.getCurrentPrimaryUniverseId();
     }
     
     /**
@@ -110,6 +113,9 @@ class InlineUniversesField {
         const editBtn = document.querySelector(`#inline-view-${this.fieldId} .inline-field-edit-btn`);
         if (editBtn) {
             editBtn.addEventListener('click', () => {
+                // Update the initial primary universe ID when entering edit mode
+                // This ensures we capture the state at the moment edit mode opens
+                this.initialPrimaryUniverseId = this.getCurrentPrimaryUniverseId();
                 // Small delay to ensure edit mode is visible
                 setTimeout(() => this.updateDisplay(), 10);
             });
@@ -494,6 +500,10 @@ class InlineUniversesField {
             return false;
         }
         
+        // Get the old primary universe ID (use stored initial value if available, otherwise current form state)
+        const oldPrimaryUniverseId = this.initialPrimaryUniverseId || this.getCurrentPrimaryUniverseId();
+        const newPrimaryUniverseId = universeIds[primaryIndex];
+        
         // Save universes - we need to send both universe_ids and primary_universe
         const form = document.querySelector(`.task-edit-form-simple[data-task-id="${this.taskId}"]`);
         if (!form) return false;
@@ -546,6 +556,14 @@ class InlineUniversesField {
                 this.updateDisplay();
             }, 50);
             
+            // If primary universe changed, move the task card to the new universe
+            if (oldPrimaryUniverseId && newPrimaryUniverseId && oldPrimaryUniverseId !== newPrimaryUniverseId) {
+                this.moveTaskCardToNewUniverse(newPrimaryUniverseId);
+            }
+            
+            // Update the stored initial value for future comparisons
+            this.initialPrimaryUniverseId = newPrimaryUniverseId;
+            
             return true;
         } catch (error) {
             ErrorHandler.handleFetchError(error, {
@@ -553,6 +571,143 @@ class InlineUniversesField {
             });
             return false;
         }
+    }
+    
+    /**
+     * Get the current primary universe ID from the form's current state
+     * This reads the currently selected primary universe before any changes
+     */
+    getCurrentPrimaryUniverseId() {
+        if (!this.elements.container) return null;
+        
+        // Find the currently checked primary radio button
+        const checkedPrimaryRadio = this.elements.container.querySelector('input[name="primary_universe"]:checked');
+        if (!checkedPrimaryRadio) return null;
+        
+        // Get the row containing this radio button
+        const primaryRow = checkedPrimaryRadio.closest('.universe-item-row');
+        if (!primaryRow) return null;
+        
+        // Get the select in this row
+        const select = primaryRow.querySelector('select[name="universe_ids[]"]');
+        if (!select || !select.value || select.value === '') return null;
+        
+        return select.value;
+    }
+    
+    /**
+     * Move the task card to the new primary universe's task list
+     */
+    moveTaskCardToNewUniverse(newUniverseId) {
+        // Find the task card element by traversing up from the form
+        const form = document.querySelector(`.task-edit-form-simple[data-task-id="${this.taskId}"]`);
+        if (!form) {
+            console.warn(`Task form not found for task ${this.taskId}`);
+            return;
+        }
+        
+        // Traverse up to find the task-item
+        const taskCard = form.closest('.task-item');
+        if (!taskCard) {
+            console.warn(`Task card not found for task ${this.taskId}`);
+            return;
+        }
+        
+        // Find the new universe's task list
+        const newUniverseTasksList = this.findUniverseTasksList(newUniverseId);
+        if (!newUniverseTasksList) {
+            console.warn(`Tasks list not found for universe ${newUniverseId}`);
+            // If the universe doesn't exist in the DOM, we might need to reload or handle differently
+            // For now, just log a warning
+            return;
+        }
+        
+        // Find the old tasks list (where the card currently is)
+        const oldTasksList = taskCard.closest('.tasks-list');
+        if (!oldTasksList) {
+            console.warn(`Current tasks list not found for task ${this.taskId}`);
+            return;
+        }
+        
+        // Don't move if it's already in the right place
+        if (oldTasksList === newUniverseTasksList) {
+            return;
+        }
+        
+        // Find the add-task-card in the new list (it should be first)
+        const addTaskCard = newUniverseTasksList.querySelector('.add-task-card');
+        
+        // Move the task card to the new list
+        // Insert after the add-task-card, or at the beginning if no add-task-card
+        if (addTaskCard && addTaskCard.nextSibling) {
+            newUniverseTasksList.insertBefore(taskCard, addTaskCard.nextSibling);
+        } else if (addTaskCard) {
+            newUniverseTasksList.appendChild(taskCard);
+        } else {
+            // No add-task-card, insert at the beginning
+            newUniverseTasksList.insertBefore(taskCard, newUniverseTasksList.firstChild);
+        }
+        
+        // Add a smooth transition effect
+        taskCard.style.opacity = '0';
+        taskCard.style.transform = 'translateY(-10px)';
+        setTimeout(() => {
+            taskCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            taskCard.style.opacity = '1';
+            taskCard.style.transform = 'translateY(0)';
+        }, 10);
+        
+        // Scroll to the new position smoothly
+        setTimeout(() => {
+            taskCard.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+                inline: 'nearest'
+            });
+        }, 50);
+        
+        // Clean up transition styles after animation
+        setTimeout(() => {
+            taskCard.style.transition = '';
+            taskCard.style.opacity = '';
+            taskCard.style.transform = '';
+        }, 350);
+        
+        Logger.debug(`Task card moved from universe ${oldTasksList.dataset?.universeId || 'unknown'} to universe ${newUniverseId}`);
+    }
+    
+    /**
+     * Find the tasks list for a given universe ID
+     */
+    findUniverseTasksList(universeId) {
+        // Method 1: Look for add-task-card with data-universe-id matching
+        const addTaskCard = document.querySelector(`.add-task-card[data-universe-id="${universeId}"]`);
+        if (addTaskCard) {
+            const tasksList = addTaskCard.closest('.tasks-list');
+            if (tasksList) return tasksList;
+        }
+        
+        // Method 2: Look for universe-view or universe-edit with data-universe-id
+        const universeView = document.querySelector(`#universe-view-${universeId}`);
+        if (universeView) {
+            // Find the tasks-list that's a sibling or nearby
+            const universeItem = universeView.closest('li');
+            if (universeItem) {
+                const tasksList = universeItem.querySelector('.tasks-list');
+                if (tasksList) return tasksList;
+            }
+        }
+        
+        // Method 3: Search all tasks-lists and check their context
+        const allTasksLists = document.querySelectorAll('.tasks-list');
+        for (const tasksList of allTasksLists) {
+            const addCard = tasksList.querySelector('.add-task-card[data-universe-id]');
+            if (addCard && addCard.dataset.universeId === universeId) {
+                return tasksList;
+            }
+        }
+        
+        return null;
     }
 
     /**
