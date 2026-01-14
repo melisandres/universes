@@ -51,6 +51,16 @@ window.TaskCard = {
         isSkipped() {
             return !!this.task.skipped_at;
         },
+        isCreatedToday() {
+            if (!this.task.created_at) {
+                return false;
+            }
+            const createdDate = new Date(this.task.created_at);
+            const today = new Date();
+            return createdDate.getFullYear() === today.getFullYear() &&
+                   createdDate.getMonth() === today.getMonth() &&
+                   createdDate.getDate() === today.getDate();
+        },
         isExpanded() {
             return this.expandedTaskIds && this.expandedTaskIds.includes(this.task.id);
         },
@@ -598,13 +608,11 @@ window.TaskCard = {
                         if (isVisible) {
                             formState[fieldName] = input.value;
                             formState[fieldName + '_isEditing'] = true;
-                            console.log(`Captured unsaved value for ${fieldName}:`, input.value);
                         }
                     }
                 }
             });
             
-            console.log('Captured form state:', formState);
             return formState;
         },
         async handleUniversesSave(universeIds, primaryIndex, oldUniverseItems) {
@@ -625,15 +633,6 @@ window.TaskCard = {
             
             // Get new primary universe ID (ensure it's a number for comparison)
             const newPrimaryUniverseId = Number(universeIds[primaryIndex]);
-            
-            console.log('Universe save - checking for primary change:', {
-                oldPrimaryUniverseId,
-                newPrimaryUniverseId,
-                oldUniverseItems,
-                universeIds,
-                primaryIndex,
-                willChange: oldPrimaryUniverseId && newPrimaryUniverseId && oldPrimaryUniverseId !== newPrimaryUniverseId
-            });
             
             try {
                 const response = await fetch(`/tasks/${this.task.id}`, {
@@ -680,13 +679,6 @@ window.TaskCard = {
                     // Check if primary universe actually changed
                     const primaryUniverseChanged = oldPrimaryUniverseId && newPrimaryUniverseId && 
                                                    oldPrimaryUniverseId !== newPrimaryUniverseId;
-                    
-                    console.log('Emitting task-updated event:', {
-                        taskId: this.task.id,
-                        primaryUniverseChanged,
-                        oldPrimaryUniverseId,
-                        newPrimaryUniverseId
-                    });
                     
                     // Capture all unsaved edit values before emitting
                     // Use $nextTick to ensure DOM is fully rendered, then capture
@@ -1093,9 +1085,24 @@ window.TaskCard = {
                         })
                     });
                     
-                    if (!logResponse.ok) {
+                    let logResult;
+                    if (window.ErrorHandler && ErrorHandler.handleResponse) {
+                        logResult = await ErrorHandler.handleResponse(logResponse, {
+                            defaultMessage: 'Error logging time before completing task'
+                        });
+                    } else {
                         const logData = await logResponse.json();
-                        throw new Error(logData.message || 'Error logging time');
+                        logResult = {
+                            success: logResponse.ok && logData.success,
+                            data: logData
+                        };
+                        if (!logResult.success) {
+                            alert(logData.message || 'Error logging time before completing task');
+                        }
+                    }
+                    
+                    if (!logResult.success) {
+                        throw new Error(logResult.error || 'Error logging time before completing task');
                     }
                 }
                 
@@ -1158,7 +1165,7 @@ window.TaskCard = {
         }
     },
     template: `
-        <li :class="['task-item', 'task-status-' + computedStatus, isCompleted ? 'task-completed' : '']">
+        <li :class="['task-item', 'task-status-' + computedStatus, isCompleted ? 'task-completed' : '', isCreatedToday ? 'task-created-today' : '']">
             <!-- View Mode -->
             <div :id="'task-view-' + task.id" 
                  :class="['task-view', 'task-status-' + computedStatus, { 'd-none': isExpanded }]">
@@ -1190,7 +1197,7 @@ window.TaskCard = {
                             @click="toggleTaskExpand(task.id)"
                             aria-label="Close">×</button>
                 </div>
-                <div class="task-edit-cards-container">
+                <div class="task-edit-mode__cards-container">
                     <div class="task-edit-card">
                         <!-- Name Field -->
                         <InlineEditableField

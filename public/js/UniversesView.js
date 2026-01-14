@@ -24,14 +24,16 @@ window.UniversesView = {
             this.$emit('universe-deleted', universeId);
         },
         handleTaskMovedToUniverse(data) {
-            console.log('UniversesView received task-moved-to-universe event:', data);
             // Emit event to parent (main app) to handle task movement
             this.$emit('task-moved-to-universe', data);
         }
     },
     template: `
         <div class="universes-container">
-            <ul>
+            <div v-if="universes.length === 0" class="empty-state">
+                <p class="empty-state__text">No universes found. Create your first universe to get started.</p>
+            </div>
+            <ul v-else>
                 <UniverseCard 
                     v-for="universe in universes" 
                     :key="universe.id"

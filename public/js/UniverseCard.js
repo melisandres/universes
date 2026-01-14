@@ -200,11 +200,6 @@ window.UniverseCard = {
         handleTaskUpdated(update) {
             // Check if primary universe changed
             if (update.primaryUniverseChanged && update.oldPrimaryUniverseId && update.newPrimaryUniverseId) {
-                console.log('Primary universe changed detected in UniverseCard:', {
-                    taskId: update.id,
-                    oldUniverseId: update.oldPrimaryUniverseId,
-                    newUniverseId: update.newPrimaryUniverseId
-                });
                 // Emit special event for task movement
                 const eventData = {
                     taskId: update.id,
@@ -212,12 +207,9 @@ window.UniverseCard = {
                     oldUniverseId: update.oldPrimaryUniverseId,
                     newUniverseId: update.newPrimaryUniverseId
                 };
-                console.log('UniverseCard emitting task-moved-to-universe:', eventData);
-                // Try both event emission and direct callback
                 this.$emit('task-moved-to-universe', eventData);
                 // Also call the callback directly if provided
                 if (this.onTaskMovedToUniverse) {
-                    console.log('UniverseCard calling onTaskMovedToUniverse callback');
                     this.onTaskMovedToUniverse(eventData);
                 }
             } else {
@@ -307,8 +299,6 @@ window.UniverseCard = {
                         skipped_at: taskData.skipped_at || null,
                         universe_items: taskData.universe_items || taskData.universeItems || []
                     };
-                    
-                    console.log('Formatted task:', formattedTask);
                     
                     // Add to universe's primary_tasks array at the beginning (newest first)
                     if (!this.universe.primary_tasks) {
@@ -541,7 +531,6 @@ window.UniverseCard = {
                 <div class="universe-edit-actions">
                     <button 
                         type="button" 
-                        class="inline-form"
                         @click="handleDelete"
                     >
                         Delete
@@ -569,7 +558,7 @@ window.UniverseCard = {
             <ul class="tasks-list">
                 <li class="task-item add-task-card" 
                     :data-universe-id="universe.id"
-                    :class="{ 'creating': isCreatingTask }"
+                    :class="{ 'add-task-card--creating': isCreatingTask }"
                     @click="handleAddTaskClick">
                     <div class="task-view">
                         <span class="add-task-icon">+</span>

@@ -12,7 +12,7 @@ window.SecondaryTaskCard = {
     },
     template: `
         <li class="task-item secondary-task-item" 
-            :class="{ 'secondary-task-clickable': task.primary_universe && navigateToTask }"
+            :class="{ 'secondary-task-item--clickable': task.primary_universe && navigateToTask }"
             @click="handleClick">
             <span class="task-content">
                 <em>

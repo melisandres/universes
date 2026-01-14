@@ -1,4 +1,20 @@
 /* ============================================
+   CSS Naming Conventions
+   ============================================ */
+/* 
+ * BEM (Block Element Modifier) Conventions:
+ * - New classes added during Vue migration follow BEM: .block__element--modifier
+ * - Existing legacy classes (e.g., .universe-header, .task-item) do not follow BEM
+ *   This is acceptable for legacy code - no refactoring required.
+ * - Examples of BEM classes:
+ *   - .empty-state (block)
+ *   - .empty-state__text (element)
+ *   - .secondary-task-item--clickable (modifier)
+ *   - .task-edit-mode__cards-container (element)
+ *   - .add-task-card--creating (modifier)
+ */
+
+/* ============================================
    Base Styles
    ============================================ */
 
@@ -514,11 +530,12 @@ button.universe-edit-toggle-btn svg {
     color: #6c757d;
 }
 
-.secondary-task-clickable {
+/* BEM: Modifier for secondary-task-item */
+.secondary-task-item--clickable {
     cursor: pointer;
 }
 
-.secondary-task-clickable:hover {
+.secondary-task-item--clickable:hover {
     opacity: 1;
     background-color: rgba(0, 0, 0, 0.02);
 }
@@ -538,6 +555,12 @@ button.universe-edit-toggle-btn svg {
 
 .add-task-card:active {
     transform: translateY(0);
+}
+
+/* BEM: Modifier for add-task-card when creating */
+.add-task-card--creating {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 .add-task-icon {
@@ -606,7 +629,8 @@ button.task-close-edit-btn:hover {
     color: #333;
 }
 
-.task-edit-cards-container {
+/* BEM: Element of task-edit-mode block */
+.task-edit-mode__cards-container {
     display: flex;
     gap: 1rem;
     align-items: flex-start;
@@ -884,6 +908,22 @@ p:only-child {
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* BEM: Block for empty state messages */
+.empty-state {
+    padding: 2rem;
+    text-align: center;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin: 2rem 0;
+}
+
+.empty-state__text {
+    color: #6c757d;
+    font-style: italic;
+    margin: 0;
 }
 
 /* ============================================
@@ -1443,6 +1483,10 @@ button.inline-field-edit-btn:hover {
 .inline-field-cancel-btn:hover {
     color: #c82333 !important; /* Darker red on hover */
     background-color: #ffe6e6 !important;
+}
+
+.inline-field-cancel-btn svg {
+    transform: rotate(180deg);
 }
 
 .inline-field-edit {

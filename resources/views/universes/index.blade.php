@@ -29,11 +29,9 @@
 <script src="{{ asset('js/UniverseCard.js') }}"></script>
 <script src="{{ asset('js/UniversesView.js') }}"></script>
 <script>
-console.log('Universes Vue script starting...');
 // Wait for everything to be ready
 (function() {
     function initVueApp() {
-        console.log('initVueApp called');
         // Check if Vue is loaded
         if (typeof Vue === 'undefined') {
             console.error('Vue is not loaded!');
@@ -46,12 +44,6 @@ console.log('Universes Vue script starting...');
             typeof window.UniverseCard === 'undefined' ||
             typeof window.TaskCard === 'undefined' ||
             typeof window.SecondaryTaskCard === 'undefined') {
-            console.log('Waiting for components...', {
-                UniversesView: typeof window.UniversesView,
-                UniverseCard: typeof window.UniverseCard,
-                TaskCard: typeof window.TaskCard,
-                SecondaryTaskCard: typeof window.SecondaryTaskCard
-            });
             setTimeout(initVueApp, 100);
             return;
         }
@@ -79,7 +71,6 @@ console.log('Universes Vue script starting...');
         window.UniversesView.components.UniverseCard = window.UniverseCard;
         
         try {
-            console.log('Initializing Vue app...');
             const { createApp } = Vue;
 
             const initialDataEl = document.getElementById('universes-initial-data');
@@ -89,7 +80,6 @@ console.log('Universes Vue script starting...');
             }
             
             const initialData = JSON.parse(initialDataEl.textContent);
-            console.log('Initial data loaded, universes count:', initialData.universes?.length || 0);
 
             const app = createApp({
                 components: {
@@ -287,7 +277,6 @@ console.log('Universes Vue script starting...');
                     },
                     // Handle task movement when primary universe changes
                     handleTaskMovedToUniverse(data) {
-                        console.log('handleTaskMovedToUniverse called with:', data);
                         const { taskId, task, oldUniverseId, newUniverseId } = data;
                         
                         // Ensure IDs are numbers for comparison
@@ -299,13 +288,6 @@ console.log('Universes Vue script starting...');
                         const oldUniverse = this.findUniverseInArray(this.universes, oldId);
                         const newUniverse = this.findUniverseInArray(this.universes, newId);
                         
-                        console.log('Found universes:', { 
-                            oldUniverse: !!oldUniverse, 
-                            newUniverse: !!newUniverse,
-                            oldId,
-                            newId
-                        });
-                        
                         if (!oldUniverse || !newUniverse) {
                             console.warn('Could not find old or new universe for task movement', { oldId, newId });
                             return;
@@ -314,8 +296,6 @@ console.log('Universes Vue script starting...');
                         // Find the task in the old universe's primary_tasks
                         const taskIndex = oldUniverse.primary_tasks ? 
                             oldUniverse.primary_tasks.findIndex(t => Number(t.id) === taskIdNum) : -1;
-                        
-                        console.log('Task search result:', { taskIndex, taskIdNum, oldUniverseTasks: oldUniverse.primary_tasks?.length });
                         
                         if (taskIndex === -1) {
                             console.warn('Task not found in old universe', { taskIdNum, oldId });
@@ -358,13 +338,6 @@ console.log('Universes Vue script starting...');
                         if (!this.expandedTaskIds.includes(taskId)) {
                             this.expandedTaskIds.push(taskId);
                         }
-                        
-                        console.log('Task moved successfully:', {
-                            taskId,
-                            from: oldUniverseId,
-                            to: newUniverseId,
-                            taskInNewUniverse: newUniverse.primary_tasks.find(t => t.id === taskId)
-                        });
                         
                         // Scroll to the task after Vue updates the DOM
                         this.$nextTick(() => {
@@ -462,7 +435,7 @@ console.log('Universes Vue script starting...');
                         deep: true
                     }
                 },
-                template: '<UniversesView :universes="universes" :all-universes="allUniverses" :statuses="statuses" :recurring-tasks="recurringTasks" :expanded-universe-ids="expandedUniverseIds" :toggle-expand="toggleUniverseExpand" :expanded-task-ids="expandedTaskIds" :toggle-task-expand="toggleTaskExpand" :navigate-to-task="navigateToTask" :on-task-moved-to-universe="handleTaskMovedToUniverse" @universe-updated="handleUniverseUpdated" @universe-deleted="handleUniverseDeleted" @task-moved-to-universe="(data) => { console.log(\'Main app received task-moved-to-universe:\', data); handleTaskMovedToUniverse(data); }" />'
+                template: '<UniversesView :universes="universes" :all-universes="allUniverses" :statuses="statuses" :recurring-tasks="recurringTasks" :expanded-universe-ids="expandedUniverseIds" :toggle-expand="toggleUniverseExpand" :expanded-task-ids="expandedTaskIds" :toggle-task-expand="toggleTaskExpand" :navigate-to-task="navigateToTask" :on-task-moved-to-universe="handleTaskMovedToUniverse" @universe-updated="handleUniverseUpdated" @universe-deleted="handleUniverseDeleted" @task-moved-to-universe="handleTaskMovedToUniverse" />'
             });
 
 
@@ -473,7 +446,6 @@ console.log('Universes Vue script starting...');
             }
             
             app.mount('#universes-vue-app');
-            console.log('Vue app mounted successfully');
         } catch (error) {
             console.error('Error mounting Vue app:', error);
             console.error(error.stack);
