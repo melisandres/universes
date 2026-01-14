@@ -3,7 +3,7 @@
 @section('title', 'Universes')
 
 @section('content')
-<h1>Universes</h1>
+<h1 id="universes-heading">Universes</h1>
 
 <a href="{{ route('universes.create') }}">+ New Universe</a>
 
@@ -95,7 +95,31 @@
                         expandedTaskIds: [],
                     };
                 },
+                computed: {
+                    totalUniverseCount() {
+                        // Count all universes including nested children
+                        const countUniverses = (universesArray) => {
+                            let count = 0;
+                            if (Array.isArray(universesArray)) {
+                                universesArray.forEach(universe => {
+                                    count++;
+                                    if (universe.children && universe.children.length > 0) {
+                                        count += countUniverses(universe.children);
+                                    }
+                                });
+                            }
+                            return count;
+                        };
+                        return countUniverses(this.universes);
+                    }
+                },
                 methods: {
+                    updateUniverseCount() {
+                        const heading = document.getElementById('universes-heading');
+                        if (heading) {
+                            heading.textContent = `Universes (${this.totalUniverseCount})`;
+                        }
+                    },
                     toggleUniverseExpand(universeId) {
                         const index = this.expandedUniverseIds.indexOf(universeId);
                         if (index > -1) {
@@ -218,7 +242,19 @@
                         });
                     },
                     handleUniverseUpdated(update) {
-                        this.updateUniverseInArray(this.universes, update.id, update);
+                        // Check if parent changed - if so, move the universe
+                        if (update.parentChanged && update.oldParentId !== undefined && update.newParentId !== undefined) {
+                            this.handleUniverseMovedToParent({
+                                universeId: update.id,
+                                universe: update,
+                                oldParentId: update.oldParentId,
+                                newParentId: update.newParentId
+                            });
+                        } else {
+                            // Normal update - just update the data
+                            this.updateUniverseInArray(this.universes, update.id, update);
+                        }
+                        
                         // Also update in allUniverses array if it exists
                         if (this.allUniverses && Array.isArray(this.allUniverses)) {
                             const universe = this.allUniverses.find(u => u.id === update.id);
@@ -243,6 +279,17 @@
                     },
                     handleUniverseDeleted(universeId) {
                         this.removeUniverseFromArray(this.universes, universeId);
+                        // Also remove from allUniverses array
+                        if (this.allUniverses && Array.isArray(this.allUniverses)) {
+                            const index = this.allUniverses.findIndex(u => u.id === universeId);
+                            if (index > -1) {
+                                this.allUniverses.splice(index, 1);
+                            }
+                        }
+                        // Update universe count
+                        this.$nextTick(() => {
+                            this.updateUniverseCount();
+                        });
                     },
                     removeUniverseFromArray(universesArray, universeId) {
                         for (let i = 0; i < universesArray.length; i++) {
@@ -274,6 +321,126 @@
                             }
                         }
                         return null;
+                    },
+                    // Handle universe movement when parent changes
+                    handleUniverseMovedToParent(data) {
+                        const { universeId, universe, oldParentId, newParentId } = data;
+                        
+                        // Ensure IDs are numbers for comparison
+                        const oldId = oldParentId === null ? null : Number(oldParentId);
+                        const newId = newParentId === null ? null : Number(newParentId);
+                        const universeIdNum = Number(universeId);
+                        
+                        // Find the universe in the old location
+                        let universeToMove = null;
+                        
+                        if (oldId === null) {
+                            // Universe was at root level
+                            const index = this.universes.findIndex(u => Number(u.id) === universeIdNum);
+                            if (index > -1) {
+                                universeToMove = JSON.parse(JSON.stringify(this.universes[index]));
+                                this.universes.splice(index, 1);
+                            }
+                        } else {
+                            // Universe was a child
+                            const oldParent = this.findUniverseInArray(this.universes, oldId);
+                            if (oldParent && oldParent.children) {
+                                const index = oldParent.children.findIndex(u => Number(u.id) === universeIdNum);
+                                if (index > -1) {
+                                    universeToMove = JSON.parse(JSON.stringify(oldParent.children[index]));
+                                    oldParent.children.splice(index, 1);
+                                }
+                            }
+                        }
+                        
+                        if (!universeToMove) {
+                            console.warn('Universe not found in old location', { universeIdNum, oldId });
+                            // Fallback: just update the data
+                            this.updateUniverseInArray(this.universes, universeId, universe);
+                            return;
+                        }
+                        
+                        // Update universe data with new parent_id
+                        universeToMove.parent_id = newId;
+                        Object.assign(universeToMove, universe);
+                        
+                        // Add universe to new location
+                        if (newId === null) {
+                            // Move to root level
+                            this.universes.push(universeToMove);
+                            // Sort by name to maintain order
+                            this.universes.sort((a, b) => a.name.localeCompare(b.name));
+                        } else {
+                            // Move to new parent
+                            const newParent = this.findUniverseInArray(this.universes, newId);
+                            if (!newParent) {
+                                console.warn('New parent universe not found', { newId });
+                                // Fallback: add to root
+                                this.universes.push(universeToMove);
+                                return;
+                            }
+                            
+                            if (!newParent.children) {
+                                newParent.children = [];
+                            }
+                            newParent.children.push(universeToMove);
+                            // Sort by name to maintain order
+                            newParent.children.sort((a, b) => a.name.localeCompare(b.name));
+                        }
+                        
+                        // Ensure universe remains expanded if it was expanded
+                        if (!this.expandedUniverseIds.includes(universeIdNum)) {
+                            this.expandedUniverseIds.push(universeIdNum);
+                        }
+                        
+                        // Update universe count
+                        this.$nextTick(() => {
+                            this.updateUniverseCount();
+                            
+                            // Scroll to the universe after Vue updates the DOM
+                            setTimeout(() => {
+                                // Try multiple strategies to find the universe element
+                                let element = null;
+                                
+                                // Strategy 1: Find the universe-view div
+                                const universeView = document.getElementById(`universe-view-${universeIdNum}`);
+                                if (universeView) {
+                                    let parent = universeView.closest('li');
+                                    if (parent) {
+                                        element = parent;
+                                    }
+                                }
+                                
+                                // Strategy 2: Find the universe-edit div
+                                if (!element) {
+                                    const universeEdit = document.getElementById(`universe-edit-${universeIdNum}`);
+                                    if (universeEdit) {
+                                        let parent = universeEdit.closest('li');
+                                        if (parent) {
+                                            element = parent;
+                                        }
+                                    }
+                                }
+                                
+                                // Strategy 3: Find any element with data-universe-id matching
+                                if (!element) {
+                                    const elements = document.querySelectorAll(`[data-universe-id="${universeIdNum}"]`);
+                                    if (elements.length > 0) {
+                                        element = elements[0].closest('li');
+                                    }
+                                }
+                                
+                                if (element) {
+                                    element.scrollIntoView({ 
+                                        behavior: 'smooth', 
+                                        block: 'center',
+                                        inline: 'nearest'
+                                    });
+                                } else {
+                                    console.warn(`Universe element not found for universe ID: ${universeIdNum}. The universe may be collapsed or not in the DOM yet.`);
+                                }
+                            }, 400); // Delay to ensure Vue has fully rendered
+                        });
                     },
                     // Handle task movement when primary universe changes
                     handleTaskMovedToUniverse(data) {
@@ -420,8 +587,15 @@
                             console.error('Error parsing saved expanded tasks:', e);
                         }
                     }
+                    
+                    // Update universe count on mount
+                    this.updateUniverseCount();
                 },
                 watch: {
+                    totalUniverseCount() {
+                        // Update count when it changes
+                        this.updateUniverseCount();
+                    },
                     expandedUniverseIds: {
                         handler(newIds) {
                             sessionStorage.setItem('expandedUniverseIds', JSON.stringify(newIds));

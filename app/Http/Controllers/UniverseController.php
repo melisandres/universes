@@ -271,9 +271,18 @@ class UniverseController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Universe $universe)
+    public function destroy(Request $request, Universe $universe)
     {
         $universe->delete();
+        
+        // Return JSON response for AJAX/JSON requests
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Universe deleted successfully'
+            ]);
+        }
+        
         return redirect()->route('universes.index');
     }
 }

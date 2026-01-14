@@ -43,6 +43,11 @@ window.UniverseCard = {
                 });
             }
             return options;
+        },
+        taskCount() {
+            const primaryCount = this.universe.primary_tasks ? this.universe.primary_tasks.length : 0;
+            const secondaryCount = this.universe.secondary_tasks ? this.universe.secondary_tasks.length : 0;
+            return primaryCount + secondaryCount;
         }
     },
     data() {
@@ -82,8 +87,9 @@ window.UniverseCard = {
                 return false;
             }
             
-            // Convert empty string to null (no parent)
-            const parentId = newValue === '' ? null : newValue;
+                    // Convert empty string to null (no parent)
+                    // Also convert to number if it's a string number
+                    const parentId = newValue === '' ? null : (typeof newValue === 'string' && newValue !== '' ? Number(newValue) : (typeof newValue === 'number' ? newValue : Number(newValue)));
             
             try {
                 const response = await fetch(`/universes/${this.universe.id}`, {
@@ -117,14 +123,26 @@ window.UniverseCard = {
                 }
                 
                 if (result.success) {
+                    // Capture old parent ID BEFORE updating (normalize empty string to null, ensure it's a number)
+                    let oldParentId = (this.universe.parent_id === '' || this.universe.parent_id === null || this.universe.parent_id === undefined) ? null : Number(this.universe.parent_id);
+                    // Ensure newParentId is also a number or null
+                    const newParentId = parentId === null ? null : Number(parentId);
+                    const parentChanged = oldParentId !== newParentId;
+                    
                     // Update local universe object immediately
                     this.universe.parent_id = parentId;
+                    
                     // Emit event to update parent data
-                    // Convert null to empty string for consistency
-                    this.$emit('universe-updated', {
+                    // Include flag if parent changed for movement handling
+                    const updateData = {
                         id: this.universe.id,
-                        parent_id: parentId === null ? '' : parentId
-                    });
+                        parent_id: parentId === null ? '' : parentId,
+                        parentChanged: parentChanged,
+                        oldParentId: oldParentId,
+                        newParentId: newParentId
+                    };
+                    
+                    this.$emit('universe-updated', updateData);
                     return true;
                 }
                 return false;
@@ -162,6 +180,7 @@ window.UniverseCard = {
                     headers: {
                         'X-CSRF-TOKEN': csrfToken,
                         'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                     }
                 });
                 
@@ -552,9 +571,14 @@ window.UniverseCard = {
                     :toggle-task-expand="toggleTaskExpand"
                     :navigate-to-task="navigateToTask"
                     :on-task-moved-to-universe="onTaskMovedToUniverse"
+                    @universe-updated="$emit('universe-updated', $event)"
+                    @universe-deleted="$emit('universe-deleted', $event)"
                     @task-moved-to-universe="$emit('task-moved-to-universe', $event)"
                 />
             </ul>
+            <div v-if="taskCount > 0" class="tasks-list-header">
+                <span class="tasks-count">{{ taskCount }} {{ taskCount === 1 ? 'task' : 'tasks' }}</span>
+            </div>
             <ul class="tasks-list">
                 <li class="task-item add-task-card" 
                     :data-universe-id="universe.id"
