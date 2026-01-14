@@ -391,7 +391,6 @@ document.addEventListener('click', function(e) {
         
         // If editor doesn't exist, try to create it
         if (!editor) {
-            // Check if the field exists
             const fieldElement = document.querySelector(`.inline-editable-field[data-field-id="${fieldId}"]`);
             if (!fieldElement) return;
             

@@ -468,25 +468,39 @@ class TaskController extends Controller
 
     public function skip(Request $request, Task $task, TaskCompletionService $service)
     {
-        $task->update([
-            'skipped_at' => now(),
-            'status' => 'skipped',
-        ]);
+        // Toggle skip/unskip: if already skipped, unskip it
+        if ($task->skipped_at) {
+            // Unskip: clear skipped_at and reset status
+            $task->update([
+                'skipped_at' => null,
+                'status' => 'open', // Reset to open, or could use computed status
+            ]);
 
-        // Handle recurring task - create next instance with deadline based on interval
-        if ($task->isRecurring()) {
-            $recurringTask = $task->recurringTask;
-            // Calculate next deadline from the skipped task's deadline (if it exists), otherwise from now
-            $fromDate = $task->deadline_at ?? now();
-            $nextDeadline = $recurringTask->nextDeadline($fromDate->copy());
-            $service->createNextRecurringInstance($task, $nextDeadline);
+            $message = 'Task unskipped successfully';
+        } else {
+            // Skip: set skipped_at and status
+            $task->update([
+                'skipped_at' => now(),
+                'status' => 'skipped',
+            ]);
+
+            // Handle recurring task - create next instance with deadline based on interval
+            if ($task->isRecurring()) {
+                $recurringTask = $task->recurringTask;
+                // Calculate next deadline from the skipped task's deadline (if it exists), otherwise from now
+                $fromDate = $task->deadline_at ?? now();
+                $nextDeadline = $recurringTask->nextDeadline($fromDate->copy());
+                $service->createNextRecurringInstance($task, $nextDeadline);
+            }
+
+            $message = 'Task skipped successfully';
         }
 
         // Return JSON for AJAX requests
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Task skipped successfully'
+                'message' => $message
             ]);
         }
 

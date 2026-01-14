@@ -448,6 +448,9 @@ button.universe-edit-toggle-btn svg {
     background: white;
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px; /* Fixed max width for consistency */
+    box-sizing: border-box;
 }
 
 .task-item.task-created-today {
@@ -511,6 +514,15 @@ button.universe-edit-toggle-btn svg {
     color: #6c757d;
 }
 
+.secondary-task-clickable {
+    cursor: pointer;
+}
+
+.secondary-task-clickable:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
 /* Add Task Card - No status border, different hover */
 .add-task-card {
     border-left: none !important;
@@ -556,6 +568,10 @@ button.universe-edit-toggle-btn svg {
     position: relative;
     max-width: 100%;
     overflow-x: hidden;
+    min-height: 200px; /* Fixed minimum height to prevent layout shifts */
+    width: 100%;
+    max-width: 600px; /* Match task-item width for consistency */
+    box-sizing: border-box;
 }
 
 .task-edit-header {
@@ -600,6 +616,11 @@ button.task-close-edit-btn:hover {
 
 /* Responsive: Stack cards vertically on smaller screens */
 @media (max-width: 768px) {
+    .task-item,
+    .task-edit-mode {
+        max-width: 100%;
+    }
+    
     .task-edit-cards-container {
         flex-direction: column;
     }
@@ -688,13 +709,21 @@ button.task-close-edit-btn:hover {
 .task-edit-card {
     flex: 1;
     min-width: 0;
-    max-width: 100%;
+    max-width: 50%;
     padding: 0.75rem;
     background: white;
     border-radius: 4px;
     border: 1px solid #ddd;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
+}
+
+/* Ensure inline field inputs within task-edit-card use full available width */
+.task-edit-card .inline-field-input {
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .task-view {
@@ -1404,6 +1433,16 @@ button.inline-field-edit-btn:hover {
 .inline-field-edit-btn svg {
     width: 16px;
     height: 16px;
+    transition: transform 0.2s, color 0.2s;
+}
+
+.inline-field-cancel-btn {
+    color: #dc3545 !important; /* Red color for cancel */
+}
+
+.inline-field-cancel-btn:hover {
+    color: #c82333 !important; /* Darker red on hover */
+    background-color: #ffe6e6 !important;
 }
 
 .inline-field-edit {

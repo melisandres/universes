@@ -154,6 +154,82 @@ The Vue component will be mounted on a single route as an isolated frontend surf
 ---
 
 ### Phase 6: Task Inline Editing (Complex Fields)
+
+**JavaScript Exclusion Roadmap for Phase 6**
+
+**Summary of All JavaScript Files:**
+
+| File | Status | Phase | Reason |
+|------|--------|-------|--------|
+| `InlineFieldEditor.js` | Excluded | Phase 5 | Vue handles inline editing |
+| `UniverseFieldSaver.js` | Excluded | Phase 5 | Vue handles universe editing |
+| `TaskCardEditor.js` | Excluded | Phase 5 | Vue handles task cards |
+| `InlineUniversesField.js` | **Exclude** | Phase 6 | Vue will handle universe field editing |
+| `InlineEstimatedTimeField.js` | **Exclude** | Phase 6 | Vue will handle estimated time field |
+| `InlineDeadlineField.js` | **Exclude** | Phase 6 | Vue will handle deadline field |
+| `InlineRecurringTaskField.js` | **Exclude** | Phase 6 | Vue will handle recurring task field |
+| `TaskFieldInitializer.js` | **Exclude** | Phase 6 | Vue will handle field initialization |
+| `AddTaskCard.js` | **Exclude** | Phase 7 | Vue will handle task creation |
+| `TaskFieldSaver.js` | Keep | - | Utility, might be used by Vue |
+| `TaskStatusManager.js` | Keep | - | Utility, Vue handles status differently |
+| `ErrorHandler.js` | Keep | - | Vue components use this |
+| `Logger.js` | Keep | - | Utility, no conflicts |
+| `TimeHelper.js` | Keep | - | Utility, no conflicts |
+| `FieldConstants.js` | Keep | - | Constants only, no conflicts |
+| `FieldUtils.js` | Keep | - | Utility functions, no conflicts |
+| `DOMUtils.js` | Keep | - | Utility functions, no conflicts |
+| `StateManager.js` | Keep | - | State management utility, no conflicts |
+| `DependencyManager.js` | Keep | - | Dependency checking, no conflicts |
+| `Diagnostics.js` | Keep | - | Development logging only, no conflicts |
+| `main.js` | Keep | - | Initialization, safe (only initializes registries) |
+| `InlineLogTimeField.js` | Keep | - | Not used in Universes view (no log time feature) |
+
+**Detailed Analysis:**
+
+Before starting Phase 6, the following JavaScript files should be conditionally excluded from loading on the Universes page to prevent conflicts with Vue:
+
+**Files to Exclude for Phase 6:**
+1. **`InlineUniversesField.js`** - Handles universe field editing for tasks (Vue will handle this)
+2. **`InlineEstimatedTimeField.js`** - Handles estimated time field editing (Vue will handle this)
+3. **`InlineDeadlineField.js`** - Handles deadline field editing (Vue will handle this)
+4. **`InlineRecurringTaskField.js`** - Handles recurring task field editing (Vue will handle this)
+5. **`TaskFieldInitializer.js`** - Initializes all task field classes (Vue will handle initialization)
+
+**Files to Keep (Utilities - No Conflicts):**
+- `ErrorHandler.js` - Vue components use this for error handling
+- `Logger.js` - Utility, no DOM manipulation
+- `TimeHelper.js` - Utility, no DOM manipulation
+- `FieldConstants.js` - Constants only, no conflicts
+- `FieldUtils.js` - Utility functions, no conflicts
+- `DOMUtils.js` - Utility functions, no conflicts
+- `StateManager.js` - State management utility, no conflicts
+- `DependencyManager.js` - Dependency checking, no conflicts
+- `Diagnostics.js` - Development logging only, no conflicts
+- `main.js` - Initialization, safe (only initializes registries)
+
+**Files to Evaluate:**
+- `TaskFieldSaver.js` - Utility for saving task fields, might be used by Vue or might conflict
+- `TaskStatusManager.js` - Handles task status changes, Vue handles this differently but might conflict
+
+**Files Already Excluded:**
+- `InlineFieldEditor.js` ✓ (excluded in Phase 5)
+- `UniverseFieldSaver.js` ✓ (excluded in Phase 5)
+- `TaskCardEditor.js` ✓ (excluded in Phase 5)
+
+**Implementation Note:**
+Add conditional loading in `resources/views/layouts/app.blade.php` using the same pattern as Phase 5:
+```php
+@if(!$isUniversesPage)
+<script src="{{ asset('js/InlineUniversesField.js') }}"></script>
+<script src="{{ asset('js/InlineEstimatedTimeField.js') }}"></script>
+<script src="{{ asset('js/InlineDeadlineField.js') }}"></script>
+<script src="{{ asset('js/InlineRecurringTaskField.js') }}"></script>
+<script src="{{ asset('js/TaskFieldInitializer.js') }}"></script>
+@endif
+```
+
+---
+
 **Goal**: Enable editing of complex task fields (universes, deadline, estimated_time, recurring_task_id).
 
 **Tasks**:
@@ -175,6 +251,31 @@ The Vue component will be mounted on a single route as an isolated frontend surf
 ---
 
 ### Phase 7: Task Creation
+
+**JavaScript Exclusion Roadmap for Phase 7**
+
+Before starting Phase 7, the following JavaScript file should be conditionally excluded from loading on the Universes page:
+
+**Files to Exclude for Phase 7:**
+1. **`AddTaskCard.js`** - Handles adding new tasks via "+ add task" card (Vue will handle this)
+
+**Note:** This file is already commented out in `resources/views/universes/index.blade.php`, but ensure it's not loaded via the layout or scripts stack.
+
+**Files Already Excluded:**
+- All files from Phase 5 and Phase 6 ✓
+
+**Implementation Note:**
+Add conditional loading in `resources/views/layouts/app.blade.php` if `AddTaskCard.js` is loaded globally:
+```php
+@if(!$isUniversesPage)
+<script src="{{ asset('js/AddTaskCard.js') }}"></script>
+@endif
+```
+
+---
+
+### Phase 7: Task Creation
+
 **Goal**: Enable creating new tasks via "+ add task" card.
 
 **Tasks**:
@@ -485,3 +586,35 @@ The Vue component will be mounted on a single route as an isolated frontend surf
 - Vue can coexist with existing JavaScript on other pages
 - Migration can be paused/resumed at any phase
 - Each phase should be tested before moving to the next
+
+---
+
+## Post-Migration Cleanup: Simplify Inline Editable Components
+
+**Note for later**: Once the old JavaScript (`InlineFieldEditor.js` and related event delegation) is removed or no longer conflicts with Vue components, the inline editable components can be significantly simplified.
+
+### Current Complexity (Due to Old JS Conflicts)
+
+The inline editable components (`InlineEditableField.js`, `InlineEditableSelect.js`, `InlineEditableTextarea.js`) currently include defensive code to prevent conflicts with the old JavaScript:
+
+- Event handlers with `.stop` modifiers to prevent event bubbling to old JS
+- Multiple checks in old JavaScript to detect and skip Vue-managed fields
+- Defensive checks in `InlineFieldEditor` constructor to prevent creating editors for Vue fields
+- Complex Vue detection logic in old JavaScript event delegation
+
+### After Old JS Removal
+
+Once the old JavaScript is removed or fully isolated, we can:
+
+1. **Remove `.stop` event modifiers** - No longer needed to prevent old JS from seeing events
+2. **Simplify event handlers** - Remove defensive code that prevents old JS interference
+3. **Remove defensive checks** - Clean up all the Vue detection logic in old JavaScript
+4. **Simplify component structure** - The two-unit toggle approach (view mode vs edit mode) can be refined without defensive code
+5. **Remove workarounds** - Any temporary fixes added to prevent conflicts can be removed
+
+### Files to Review for Simplification
+
+- `public/js/InlineEditableField.js`
+- `public/js/InlineEditableSelect.js`
+- `public/js/InlineEditableTextarea.js`
+- `public/js/InlineFieldEditor.js` (can be removed entirely if not used elsewhere, or simplified if still needed for other views)

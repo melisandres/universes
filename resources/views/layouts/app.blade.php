@@ -22,10 +22,19 @@
     @yield('content')
     
     {{-- Core dependencies --}}
+    {{-- Skip InlineFieldEditor on Universes view (Vue handles inline editing) --}}
+    @php
+        $isUniversesPage = request()->routeIs('universes.index');
+    @endphp
+    @if(!$isUniversesPage)
     <script src="{{ asset('js/InlineFieldEditor.js') }}"></script>
+    @endif
     <script src="{{ asset('js/TaskFieldSaver.js') }}"></script>
     <script src="{{ asset('js/TaskStatusManager.js') }}"></script>
+    {{-- Skip UniverseFieldSaver on Universes view (Vue handles universe editing) --}}
+    @if(!$isUniversesPage)
     <script src="{{ asset('js/UniverseFieldSaver.js') }}"></script>
+    @endif
     
     {{-- Utility classes --}}
     <script src="{{ asset('js/TimeHelper.js') }}"></script>
@@ -47,17 +56,23 @@
     <script src="{{ asset('js/main.js') }}"></script>
     
     {{-- Field classes (loaded before TaskCardEditor) --}}
+    {{-- Skip task field classes on Universes view (Vue handles task field editing) --}}
+    @if(!$isUniversesPage)
     <script src="{{ asset('js/InlineUniversesField.js') }}"></script>
     <script src="{{ asset('js/InlineEstimatedTimeField.js') }}"></script>
     <script src="{{ asset('js/InlineRecurringTaskField.js') }}"></script>
     <script src="{{ asset('js/InlineDeadlineField.js') }}"></script>
+    @endif
     <script src="{{ asset('js/InlineLogTimeField.js') }}"></script>
     
     {{-- Dependency manager (for proper dependency checking) - load after field classes --}}
     <script src="{{ asset('js/DependencyManager.js') }}"></script>
     
     {{-- Task field initializer (initializes all field classes) --}}
+    {{-- Skip TaskFieldInitializer on Universes view (Vue handles field initialization) --}}
+    @if(!$isUniversesPage)
     <script src="{{ asset('js/TaskFieldInitializer.js') }}"></script>
+    @endif
     
     {{-- Diagnostics (comprehensive logging) - only in development --}}
     @if(config('app.env') === 'local' || config('app.env') === 'development')
@@ -65,7 +80,10 @@
     @endif
     
     {{-- Task card editor (may use registries from main.js) --}}
+    {{-- Skip TaskCardEditor on Universes view (Vue handles task cards) --}}
+    @if(!$isUniversesPage)
     <script src="{{ asset('js/TaskCardEditor.js') }}"></script>
+    @endif
     
     {{-- Field classes and page-specific scripts --}}
     @stack('scripts')

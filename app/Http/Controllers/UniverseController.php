@@ -10,7 +10,7 @@ class UniverseController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         // Update task statuses based on deadlines before loading
         \App\Models\Task::updateOverdueStatuses();
@@ -20,7 +20,8 @@ class UniverseController extends Controller
         // hasManyThrough automatically loads all task fields including deadline_at
         $universes = Universe::whereNull('parent_id')
             ->with(['primaryTasks' => function ($query) {
-                $query->whereNull('completed_at');
+                $query->whereNull('completed_at')
+                      ->orderBy('created_at', 'desc'); // Newest tasks first
             }, 'secondaryTasks' => function ($query) {
                 $query->whereNull('completed_at');
             }])
@@ -46,7 +47,20 @@ class UniverseController extends Controller
             'done',
         ];
         
-        return view('universes.index', compact('universes', 'allUniverses', 'statuses', 'recurringTasks'));
+        // Prepare initial data for Vue
+        $initialData = [
+            'universes' => $this->formatUniversesForJson($universes),
+            'all_universes' => $allUniverses->map(fn($u) => ['id' => $u->id, 'name' => $u->name])->values(),
+            'statuses' => $statuses,
+            'recurring_tasks' => $recurringTasks->map(fn($rt) => ['id' => $rt->id, 'name' => $rt->name])->values(),
+        ];
+        
+        // Check if JSON response is requested
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json($initialData);
+        }
+        
+        return view('universes.index', compact('universes', 'allUniverses', 'statuses', 'recurringTasks', 'initialData'));
     }
 
     /**
@@ -62,7 +76,8 @@ class UniverseController extends Controller
         $ids = $universes->pluck('id');
         $children = Universe::whereIn('parent_id', $ids)
             ->with(['primaryTasks' => function ($query) {
-                $query->whereNull('completed_at');
+                $query->whereNull('completed_at')
+                      ->orderBy('created_at', 'desc'); // Newest tasks first
             }, 'secondaryTasks' => function ($query) {
                 $query->whereNull('completed_at');
             }])
@@ -79,6 +94,73 @@ class UniverseController extends Controller
         if ($children->isNotEmpty()) {
             $this->loadChildrenRecursively($children->flatten());
         }
+    }
+
+    /**
+     * Format universes for JSON response (recursive).
+     */
+    private function formatUniversesForJson($universes)
+    {
+        return $universes->map(function ($universe) {
+            $data = [
+                'id' => $universe->id,
+                'name' => $universe->name,
+                'status' => $universe->status,
+                'parent_id' => $universe->parent_id,
+                'children' => $this->formatUniversesForJson($universe->children ?? collect()),
+                'primary_tasks' => $this->formatTasksForJson($universe->primaryTasks ?? collect()),
+                'secondary_tasks' => $this->formatSecondaryTasksForJson($universe->secondaryTasks ?? collect()),
+            ];
+            return $data;
+        });
+    }
+
+    /**
+     * Format tasks for JSON response.
+     */
+    private function formatTasksForJson($tasks)
+    {
+        return $tasks->map(function ($task) {
+            return [
+                'id' => $task->id,
+                'name' => $task->name,
+                'description' => $task->description,
+                'status' => $task->status,
+                'computed_status' => $task->getComputedStatus(),
+                'deadline_at' => $task->deadline_at?->toIso8601String(),
+                'estimated_time' => $task->estimated_time,
+                'recurring_task_id' => $task->recurring_task_id,
+                'completed_at' => $task->completed_at?->toIso8601String(),
+                'skipped_at' => $task->skipped_at?->toIso8601String(),
+                'universe_items' => $task->universeItems->map(fn($ui) => [
+                    'universe_id' => $ui->universe_id,
+                    'is_primary' => $ui->is_primary,
+                ]),
+            ];
+        });
+    }
+
+    /**
+     * Format secondary tasks for JSON response.
+     */
+    private function formatSecondaryTasksForJson($tasks)
+    {
+        return $tasks->map(function ($task) {
+            // Ensure universeItems are loaded
+            if (!$task->relationLoaded('universeItems')) {
+                $task->load('universeItems.universe');
+            }
+            
+            $primaryUniverseItem = $task->universeItems->where('is_primary', true)->first();
+            return [
+                'id' => $task->id,
+                'name' => $task->name,
+                'primary_universe' => $primaryUniverseItem ? [
+                    'id' => $primaryUniverseItem->universe->id,
+                    'name' => $primaryUniverseItem->universe->name,
+                ] : null,
+            ];
+        });
     }
 
     /**
