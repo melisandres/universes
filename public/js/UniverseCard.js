@@ -18,6 +18,7 @@ window.UniverseCard = {
         toggleTaskExpand: Function,
         navigateToTask: Function,
         onTaskMovedToUniverse: Function,
+        allTasksExpanded: Boolean,
     },
     computed: {
         isExpanded() {
@@ -48,11 +49,16 @@ window.UniverseCard = {
             const primaryCount = this.universe.primary_tasks ? this.universe.primary_tasks.length : 0;
             const secondaryCount = this.universe.secondary_tasks ? this.universe.secondary_tasks.length : 0;
             return primaryCount + secondaryCount;
+        },
+        tasksExpanded() {
+            // Always use local state - global toggle updates local states via watcher
+            return this.localTasksExpanded;
         }
     },
     data() {
         return {
-            isCreatingTask: false
+            isCreatingTask: false,
+            localTasksExpanded: true // Local state for individual toggle
         };
     },
     methods: {
@@ -479,18 +485,20 @@ window.UniverseCard = {
                 }
                 return false;
             }
+        },
+        toggleTasksVisibility() {
+            this.localTasksExpanded = !this.localTasksExpanded;
         }
     },
     template: `
-        <li>
+        <li :class="'universe-card universe-status-' + universe.status.replace(/_/g, '-')">
             <div :id="'universe-view-' + universe.id" 
                  class="universe-header" 
                  :class="{ 'd-none': isExpanded }"
                  :data-parent-id="universe.parent_id || ''" 
                  :data-universe-id="universe.id">
-                <div class="universe-status-display">{{ universe.status.replace(/_/g, ' ') }}</div>
-                <div class="universe-name-row">
-                    <strong class="universe-name">{{ universe.name }}</strong>
+                <div class="universe-status-row">
+                    <div class="universe-status-display">{{ universe.status.replace(/_/g, ' ') }}</div>
                     <button type="button" 
                             class="universe-edit-toggle-btn" 
                             :data-universe-id="universe.id" 
@@ -500,6 +508,9 @@ window.UniverseCard = {
                             <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
                         </svg>
                     </button>
+                </div>
+                <div class="universe-name-row">
+                    <strong class="universe-name">{{ universe.name }}</strong>
                 </div>
             </div>
             
@@ -557,29 +568,24 @@ window.UniverseCard = {
                 </div>
             </div>
             
-            <ul v-if="universe.children && universe.children.length > 0">
-                <UniverseCard 
-                    v-for="child in universe.children" 
-                    :key="child.id"
-                    :universe="child"
-                    :all-universes="allUniverses"
-                    :statuses="statuses"
-                    :recurring-tasks="recurringTasks"
-                    :expanded-universe-ids="expandedUniverseIds"
-                    :toggle-expand="toggleExpand"
-                    :expanded-task-ids="expandedTaskIds"
-                    :toggle-task-expand="toggleTaskExpand"
-                    :navigate-to-task="navigateToTask"
-                    :on-task-moved-to-universe="onTaskMovedToUniverse"
-                    @universe-updated="$emit('universe-updated', $event)"
-                    @universe-deleted="$emit('universe-deleted', $event)"
-                    @task-moved-to-universe="$emit('task-moved-to-universe', $event)"
-                />
-            </ul>
             <div v-if="taskCount > 0" class="tasks-list-header">
-                <span class="tasks-count">{{ taskCount }} {{ taskCount === 1 ? 'task' : 'tasks' }}</span>
+                <div class="tasks-header-row">
+                    <span class="tasks-label">{{ taskCount === 1 ? 'task' : 'tasks' }}</span>
+                    <span class="tasks-count">({{ taskCount }})</span>
+                    <button 
+                        type="button" 
+                        class="tasks-toggle-btn"
+                        @click="toggleTasksVisibility"
+                        :aria-expanded="tasksExpanded"
+                        :aria-label="tasksExpanded ? 'Collapse tasks' : 'Expand tasks'">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline v-if="tasksExpanded" points="18 15 12 9 6 15"></polyline>
+                            <polyline v-else points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <ul class="tasks-list">
+            <ul v-show="tasksExpanded" class="tasks-list">
                 <li class="task-item add-task-card" 
                     :data-universe-id="universe.id"
                     :class="{ 'add-task-card--creating': isCreatingTask }"
@@ -610,6 +616,36 @@ window.UniverseCard = {
                     :navigate-to-task="navigateToTask"
                 />
             </ul>
+            
+            <ul v-if="universe.children && universe.children.length > 0">
+                <UniverseCard 
+                    v-for="child in universe.children" 
+                    :key="child.id"
+                    :universe="child"
+                    :all-universes="allUniverses"
+                    :statuses="statuses"
+                    :recurring-tasks="recurringTasks"
+                    :expanded-universe-ids="expandedUniverseIds"
+                    :toggle-expand="toggleExpand"
+                    :expanded-task-ids="expandedTaskIds"
+                    :toggle-task-expand="toggleTaskExpand"
+                    :navigate-to-task="navigateToTask"
+                    :on-task-moved-to-universe="onTaskMovedToUniverse"
+                    :all-tasks-expanded="allTasksExpanded"
+                    @universe-updated="$emit('universe-updated', $event)"
+                    @universe-deleted="$emit('universe-deleted', $event)"
+                    @task-moved-to-universe="$emit('task-moved-to-universe', $event)"
+                />
+            </ul>
         </li>
-    `
+    `,
+    watch: {
+        allTasksExpanded(newVal) {
+            // When global toggle changes, update local state to match
+            // This allows global toggle to work while still allowing individual toggles
+            if (newVal === true || newVal === false) {
+                this.localTasksExpanded = newVal;
+            }
+        }
+    }
 };

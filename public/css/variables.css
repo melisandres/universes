@@ -4,5 +4,13 @@
     --task-status-late: #dc3545;      /* Red */
     --task-status-skipped: #f4b080;   /* Pink */
     --task-status-completed: #6c757d; /* Gray */
+    
+    /* Universe Status Colors */
+    --universe-status-not_started: #6c757d;      /* Gray */
+    --universe-status-next_small_steps: #17a2b8; /* Teal */
+    --universe-status-in_focus: #ffc107;         /* Yellow/Amber */
+    --universe-status-in_orbit: #28a745;         /* Green */
+    --universe-status-dormant: #6c757d;          /* Gray */
+    --universe-status-done: #6c757d;             /* Gray */
 }
 

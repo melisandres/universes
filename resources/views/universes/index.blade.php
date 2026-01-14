@@ -3,9 +3,22 @@
 @section('title', 'Universes')
 
 @section('content')
-<h1 id="universes-heading">Universes</h1>
-
-<a href="{{ route('universes.create') }}">+ New Universe</a>
+<div class="universes-page-header">
+    <h1 id="universes-heading">Universes</h1>
+    <div class="universes-header-actions">
+        <button 
+            type="button" 
+            id="toggle-all-tasks-btn"
+            class="toggle-all-tasks-btn"
+            aria-label="Toggle all tasks visibility">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline id="toggle-all-tasks-icon" points="18 15 12 9 6 15"></polyline>
+            </svg>
+            <span id="toggle-all-tasks-text">Hide All Tasks</span>
+        </button>
+        <a href="{{ route('universes.create') }}">+ New Universe</a>
+    </div>
+</div>
 
 <div id="universes-vue-app">
     <!-- Vue will render here -->
@@ -93,6 +106,7 @@
                         recurringTasks: initialData.recurring_tasks || [],
                         expandedUniverseIds: [],
                         expandedTaskIds: [],
+                        allTasksExpanded: null, // null = use individual states, true = all expanded, false = all collapsed
                     };
                 },
                 computed: {
@@ -442,6 +456,30 @@
                             }, 400); // Delay to ensure Vue has fully rendered
                         });
                     },
+                    toggleAllTasks() {
+                        if (this.allTasksExpanded === null || this.allTasksExpanded === false) {
+                            this.allTasksExpanded = true;
+                        } else {
+                            this.allTasksExpanded = false;
+                        }
+                        this.updateToggleAllButton();
+                    },
+                    updateToggleAllButton() {
+                        this.$nextTick(() => {
+                            const btn = document.getElementById('toggle-all-tasks-btn');
+                            const icon = document.getElementById('toggle-all-tasks-icon');
+                            const text = document.getElementById('toggle-all-tasks-text');
+                            if (btn && icon && text) {
+                                if (this.allTasksExpanded === true) {
+                                    icon.setAttribute('points', '18 15 12 9 6 15');
+                                    text.textContent = 'Hide All Tasks';
+                                } else {
+                                    icon.setAttribute('points', '6 9 12 15 18 9');
+                                    text.textContent = 'Show All Tasks';
+                                }
+                            }
+                        });
+                    },
                     // Handle task movement when primary universe changes
                     handleTaskMovedToUniverse(data) {
                         const { taskId, task, oldUniverseId, newUniverseId } = data;
@@ -588,8 +626,20 @@
                         }
                     }
                     
+                    // Load all tasks expanded state
+                    const savedAllTasksExpanded = sessionStorage.getItem('allTasksExpanded');
+                    if (savedAllTasksExpanded) {
+                        try {
+                            this.allTasksExpanded = JSON.parse(savedAllTasksExpanded);
+                        } catch (e) {
+                            console.error('Error parsing saved all tasks expanded state:', e);
+                        }
+                    }
+                    
                     // Update universe count on mount
                     this.updateUniverseCount();
+                    // Update toggle button state
+                    this.updateToggleAllButton();
                 },
                 watch: {
                     totalUniverseCount() {
@@ -607,9 +657,15 @@
                             sessionStorage.setItem('expandedTaskIds', JSON.stringify(newIds));
                         },
                         deep: true
+                    },
+                    allTasksExpanded: {
+                        handler(newVal) {
+                            sessionStorage.setItem('allTasksExpanded', JSON.stringify(newVal));
+                            this.updateToggleAllButton();
+                        }
                     }
                 },
-                template: '<UniversesView :universes="universes" :all-universes="allUniverses" :statuses="statuses" :recurring-tasks="recurringTasks" :expanded-universe-ids="expandedUniverseIds" :toggle-expand="toggleUniverseExpand" :expanded-task-ids="expandedTaskIds" :toggle-task-expand="toggleTaskExpand" :navigate-to-task="navigateToTask" :on-task-moved-to-universe="handleTaskMovedToUniverse" @universe-updated="handleUniverseUpdated" @universe-deleted="handleUniverseDeleted" @task-moved-to-universe="handleTaskMovedToUniverse" />'
+                template: '<UniversesView :universes="universes" :all-universes="allUniverses" :statuses="statuses" :recurring-tasks="recurringTasks" :expanded-universe-ids="expandedUniverseIds" :toggle-expand="toggleUniverseExpand" :expanded-task-ids="expandedTaskIds" :toggle-task-expand="toggleTaskExpand" :navigate-to-task="navigateToTask" :on-task-moved-to-universe="handleTaskMovedToUniverse" :all-tasks-expanded="allTasksExpanded" @universe-updated="handleUniverseUpdated" @universe-deleted="handleUniverseDeleted" @task-moved-to-universe="handleTaskMovedToUniverse" />'
             });
 
 
@@ -619,7 +675,15 @@
                 return;
             }
             
-            app.mount('#universes-vue-app');
+            const vueApp = app.mount('#universes-vue-app');
+            
+            // Set up toggle all tasks button click handler
+            const toggleBtn = document.getElementById('toggle-all-tasks-btn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    vueApp.toggleAllTasks();
+                });
+            }
         } catch (error) {
             console.error('Error mounting Vue app:', error);
             console.error(error.stack);

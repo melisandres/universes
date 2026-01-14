@@ -109,6 +109,48 @@ body > nav + * {
     padding: 0 2rem 2rem 2rem;
 }
 
+/* Universes page header */
+.universes-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.universes-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.toggle-all-tasks-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: 1px solid #ced4da;
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #6c757d;
+    transition: all 0.2s;
+}
+
+.toggle-all-tasks-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+    color: #495057;
+}
+
+.toggle-all-tasks-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
 /* Page headers */
 h1 + a,
 h2 + a {
@@ -155,11 +197,11 @@ form button[type="submit"]:not(.btn-primary):not(.log-form-submit-btn):hover {
 
 /* Edit buttons (button type="button") */
 button[type="button"] {
-    background-color: #6c757d;
+    /* background-color: #6c757d; */
 }
 
 button[type="button"]:hover {
-    background-color: #5a6268;
+    /* background-color: #5a6268; */
 }
 
 /* ============================================
@@ -371,12 +413,47 @@ form > label + textarea {
     margin-right: 0.25rem;
 }
 
+/* Universe card - status-based border */
+.universe-card {
+    border-left: 4px solid;
+}
+
+.universe-card.universe-status-not-started {
+    border-left-color: var(--universe-status-not_started, #6c757d);
+}
+
+.universe-card.universe-status-next-small-steps {
+    border-left-color: var(--universe-status-next_small_steps, #17a2b8);
+}
+
+.universe-card.universe-status-in-focus {
+    border-left-color: var(--universe-status-in_focus, #ffc107);
+}
+
+.universe-card.universe-status-in-orbit {
+    border-left-color: var(--universe-status-in_orbit, #28a745);
+}
+
+.universe-card.universe-status-dormant {
+    border-left-color: var(--universe-status-dormant, #6c757d);
+}
+
+.universe-card.universe-status-done {
+    border-left-color: var(--universe-status-done, #6c757d);
+}
+
 /* Universe header - one line */
 .universe-header {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
+}
+
+.universe-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .universe-name-row {
@@ -386,8 +463,10 @@ form > label + textarea {
 }
 
 .universe-header button.universe-edit-toggle-btn,
+.universe-status-row button.universe-edit-toggle-btn,
 .universe-name-row button.universe-edit-toggle-btn,
 .universe-header .universe-edit-toggle-btn,
+.universe-status-row .universe-edit-toggle-btn,
 .universe-name-row .universe-edit-toggle-btn {
     background: none;
     border: none;
@@ -405,8 +484,10 @@ form > label + textarea {
 }
 
 .universe-header button.universe-edit-toggle-btn:hover,
+.universe-status-row button.universe-edit-toggle-btn:hover,
 .universe-name-row button.universe-edit-toggle-btn:hover,
 .universe-header .universe-edit-toggle-btn:hover,
+.universe-status-row .universe-edit-toggle-btn:hover,
 .universe-name-row .universe-edit-toggle-btn:hover {
     opacity: 1;
     color: #007bff;
@@ -415,6 +496,7 @@ form > label + textarea {
 }
 
 .universe-header .universe-edit-toggle-btn svg,
+.universe-status-row .universe-edit-toggle-btn svg,
 .universe-name-row .universe-edit-toggle-btn svg,
 button.universe-edit-toggle-btn svg {
     width: 16px;
@@ -441,13 +523,61 @@ button.universe-edit-toggle-btn svg {
 /* Tasks list - compact one-line format */
 .tasks-list-header {
     margin: 0.5rem 0 0.25rem 0;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.85rem;
+    padding: 0;
+}
+
+.tasks-header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tasks-label {
+    font-size: 1.2em;
+    font-weight: 500;
     color: #6c757d;
 }
 
 .tasks-count {
+    font-size: 1.2em;
     font-weight: 500;
+    color: #6c757d;
+}
+
+.tasks-list-header button.tasks-toggle-btn,
+.tasks-header-row button.tasks-toggle-btn,
+.tasks-list-header .tasks-toggle-btn,
+.tasks-header-row .tasks-toggle-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0.6;
+    font-size: inherit;
+    font-weight: inherit;
+}
+
+.tasks-list-header button.tasks-toggle-btn:hover,
+.tasks-header-row button.tasks-toggle-btn:hover,
+.tasks-list-header .tasks-toggle-btn:hover,
+.tasks-header-row .tasks-toggle-btn:hover {
+    opacity: 1;
+    color: #007bff;
+    background-color: #f0f0f0;
+    transform: none;
+}
+
+.tasks-list-header .tasks-toggle-btn svg,
+.tasks-header-row .tasks-toggle-btn svg,
+button.tasks-toggle-btn svg {
+    width: 16px;
+    height: 16px;
 }
 
 .tasks-list {
@@ -475,10 +605,13 @@ button.universe-edit-toggle-btn svg {
     background: white;
     border-radius: 4px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    max-width: 600px; /* Fixed max width for consistency */
+    width: auto; /* Variable width based on content when in collapsed (view) state */
+    max-width: none;
+    min-width: fit-content;
     box-sizing: border-box;
 }
+
+/* Note: task-edit-mode already has max-width: 600px set below for stable width when expanded */
 
 .task-item.task-created-today {
     background-color: #fff8e1; /* Very light yellow/orange */
@@ -869,6 +1002,11 @@ ul > li {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     border-left: 4px solid #007bff;
     transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Exclude universe cards from the default border-left */
+ul > li.universe-card {
+    /* border-left: none; */
 }
 
 ul > li:hover {

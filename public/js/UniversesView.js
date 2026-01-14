@@ -13,6 +13,7 @@ window.UniversesView = {
         toggleTaskExpand: Function,
         navigateToTask: Function,
         onTaskMovedToUniverse: Function,
+        allTasksExpanded: Boolean,
     },
     methods: {
         handleUniverseUpdated(update) {
@@ -47,6 +48,7 @@ window.UniversesView = {
                     :toggle-task-expand="toggleTaskExpand"
                     :navigate-to-task="navigateToTask"
                     :on-task-moved-to-universe="onTaskMovedToUniverse"
+                    :all-tasks-expanded="allTasksExpanded"
                     @universe-updated="handleUniverseUpdated"
                     @universe-deleted="handleUniverseDeleted"
                     @task-moved-to-universe="handleTaskMovedToUniverse"
