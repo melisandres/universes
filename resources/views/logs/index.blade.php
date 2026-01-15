@@ -20,6 +20,10 @@
                 <input type="radio" name="log_type" value="idea" style="margin-right: 0.25rem;">
                 Idea
             </label>
+            <label style="display: inline-flex; align-items: center; margin-right: 1rem;">
+                <input type="radio" name="log_type" value="universe" style="margin-right: 0.25rem;">
+                Universe
+            </label>
             <label style="display: inline-flex; align-items: center;">
                 <input type="radio" name="log_type" value="other" style="margin-right: 0.25rem;">
                 Other (Standalone)
@@ -50,6 +54,16 @@
                             <option value="{{ $idea->id }}">{{ $idea->title }}</option>
                         @endforeach
                     </optgroup>
+                @endforeach
+            </select>
+        </div>
+
+        <div id="universe-select-container" style="margin-bottom: 1rem; display: none;">
+            <label>Universe:</label><br>
+            <select name="universe_id" id="universe-select">
+                <option value="">— select universe —</option>
+                @foreach ($universes as $universe)
+                    <option value="{{ $universe->id }}">{{ $universe->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -135,6 +149,8 @@
                                     @endif
                                     )
                                 @endif<br>
+                            @elseif($log->universe)
+                                <strong>Universe: {{ $log->universe->name }}</strong><br>
                             @else
                                 <strong>Standalone Log</strong><br>
                             @endif
@@ -171,8 +187,12 @@
                                         <input type="radio" name="log_type_{{ $log->id }}" value="idea" @checked($log->loggable_type === 'App\Models\Idea') style="margin-right: 0.25rem;">
                                         Idea
                                     </label>
+                                    <label style="display: inline-flex; align-items: center; margin-right: 1rem;">
+                                        <input type="radio" name="log_type_{{ $log->id }}" value="universe" @checked($log->loggable_type === 'App\Models\Universe') style="margin-right: 0.25rem;">
+                                        Universe
+                                    </label>
                                     <label style="display: inline-flex; align-items: center;">
-                                        <input type="radio" name="log_type_{{ $log->id }}" value="other" @checked($log->loggable_type !== 'App\Models\Task' && $log->loggable_type !== 'App\Models\Idea') style="margin-right: 0.25rem;">
+                                        <input type="radio" name="log_type_{{ $log->id }}" value="other" @checked($log->loggable_type !== 'App\Models\Task' && $log->loggable_type !== 'App\Models\Idea' && $log->loggable_type !== 'App\Models\Universe') style="margin-right: 0.25rem;">
                                         Other (Standalone)
                                     </label>
                                 </div>
@@ -205,6 +225,18 @@
                                                     </option>
                                                 @endforeach
                                             </optgroup>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div class="universe-select-container-edit" id="universe-select-container-edit-{{ $log->id }}" style="margin-bottom: 1rem; @if($log->loggable_type !== 'App\Models\Universe') display: none; @endif">
+                                    <label>Universe:</label><br>
+                                    <select name="universe_id_edit_{{ $log->id }}" class="universe-select-edit">
+                                        <option value="">— select universe —</option>
+                                        @foreach ($universes as $universe)
+                                            <option value="{{ $universe->id }}" @selected($log->loggable_type === 'App\Models\Universe' && $log->loggable_id == $universe->id)>
+                                                {{ $universe->name }}
+                                            </option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -269,8 +301,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const logTypeRadios = document.querySelectorAll('input[name="log_type"]');
     const taskSelectContainer = document.getElementById('task-select-container');
     const ideaSelectContainer = document.getElementById('idea-select-container');
+    const universeSelectContainer = document.getElementById('universe-select-container');
     const taskSelect = document.getElementById('task-select');
     const ideaSelect = document.getElementById('idea-select');
+    const universeSelect = document.getElementById('universe-select');
     const loggableTypeInput = document.getElementById('loggable-type-input');
     const loggableIdInput = document.getElementById('loggable-id-input');
     const newLogForm = document.getElementById('new-log-form');
@@ -280,23 +314,37 @@ document.addEventListener('DOMContentLoaded', function() {
             if (this.value === 'task') {
                 taskSelectContainer.style.display = 'block';
                 ideaSelectContainer.style.display = 'none';
+                universeSelectContainer.style.display = 'none';
                 loggableTypeInput.value = 'App\Models\Task';
                 loggableIdInput.value = taskSelect.value || '';
                 ideaSelect.value = '';
+                universeSelect.value = '';
             } else if (this.value === 'idea') {
                 taskSelectContainer.style.display = 'none';
                 ideaSelectContainer.style.display = 'block';
+                universeSelectContainer.style.display = 'none';
                 loggableTypeInput.value = 'App\Models\Idea';
                 loggableIdInput.value = ideaSelect.value || '';
                 taskSelect.value = '';
+                universeSelect.value = '';
+            } else if (this.value === 'universe') {
+                taskSelectContainer.style.display = 'none';
+                ideaSelectContainer.style.display = 'none';
+                universeSelectContainer.style.display = 'block';
+                loggableTypeInput.value = 'App\Models\Universe';
+                loggableIdInput.value = universeSelect.value || '';
+                taskSelect.value = '';
+                ideaSelect.value = '';
             } else {
                 // Other/Standalone
                 taskSelectContainer.style.display = 'none';
                 ideaSelectContainer.style.display = 'none';
+                universeSelectContainer.style.display = 'none';
                 loggableTypeInput.value = '';
                 loggableIdInput.value = '';
                 taskSelect.value = '';
                 ideaSelect.value = '';
+                universeSelect.value = '';
             }
         });
     });
@@ -318,6 +366,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    if (universeSelect) {
+        universeSelect.addEventListener('change', function() {
+            if (document.querySelector('input[name="log_type"]:checked').value === 'universe') {
+                loggableIdInput.value = this.value || '';
+            }
+        });
+    }
+
     // Handle form submission - ensure loggable_id is set correctly
     if (newLogForm) {
         newLogForm.addEventListener('submit', function(e) {
@@ -326,6 +382,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 loggableIdInput.value = taskSelect.value || '';
             } else if (selectedType === 'idea') {
                 loggableIdInput.value = ideaSelect.value || '';
+            } else if (selectedType === 'universe') {
+                loggableIdInput.value = universeSelect.value || '';
             } else {
                 loggableIdInput.value = '';
             }
@@ -338,8 +396,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const logTypeRadios = form.querySelectorAll(`input[name="log_type_${logId}"]`);
         const taskContainer = document.getElementById(`task-select-container-edit-${logId}`);
         const ideaContainer = document.getElementById(`idea-select-container-edit-${logId}`);
+        const universeContainer = document.getElementById(`universe-select-container-edit-${logId}`);
         const taskSelect = form.querySelector(`.task-select-edit`);
         const ideaSelect = form.querySelector(`.idea-select-edit`);
+        const universeSelect = form.querySelector(`.universe-select-edit`);
         const loggableTypeInput = form.querySelector('.loggable-type-input-edit');
         const loggableIdInput = form.querySelector('.loggable-id-input-edit');
 
@@ -348,22 +408,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (this.value === 'task') {
                     taskContainer.style.display = 'block';
                     ideaContainer.style.display = 'none';
+                    if (universeContainer) universeContainer.style.display = 'none';
                     loggableTypeInput.value = 'App\Models\Task';
                     loggableIdInput.value = taskSelect.value || '';
                     ideaSelect.value = '';
+                    if (universeSelect) universeSelect.value = '';
                 } else if (this.value === 'idea') {
                     taskContainer.style.display = 'none';
                     ideaContainer.style.display = 'block';
+                    if (universeContainer) universeContainer.style.display = 'none';
                     loggableTypeInput.value = 'App\Models\Idea';
                     loggableIdInput.value = ideaSelect.value || '';
                     taskSelect.value = '';
+                    if (universeSelect) universeSelect.value = '';
+                } else if (this.value === 'universe') {
+                    taskContainer.style.display = 'none';
+                    ideaContainer.style.display = 'none';
+                    if (universeContainer) universeContainer.style.display = 'block';
+                    loggableTypeInput.value = 'App\Models\Universe';
+                    loggableIdInput.value = universeSelect ? universeSelect.value || '' : '';
+                    taskSelect.value = '';
+                    ideaSelect.value = '';
                 } else {
                     taskContainer.style.display = 'none';
                     ideaContainer.style.display = 'none';
+                    if (universeContainer) universeContainer.style.display = 'none';
                     loggableTypeInput.value = '';
                     loggableIdInput.value = '';
                     taskSelect.value = '';
                     ideaSelect.value = '';
+                    if (universeSelect) universeSelect.value = '';
                 }
             });
         });
@@ -385,6 +459,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
+        if (universeSelect) {
+            universeSelect.addEventListener('change', function() {
+                if (form.querySelector(`input[name="log_type_${logId}"]:checked`).value === 'universe') {
+                    loggableIdInput.value = this.value || '';
+                }
+            });
+        }
+
         // Handle form submission
         form.addEventListener('submit', function(e) {
             const selectedType = form.querySelector(`input[name="log_type_${logId}"]:checked`).value;
@@ -392,6 +474,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 loggableIdInput.value = taskSelect.value || '';
             } else if (selectedType === 'idea') {
                 loggableIdInput.value = ideaSelect.value || '';
+            } else if (selectedType === 'universe') {
+                loggableIdInput.value = universeSelect ? universeSelect.value || '' : '';
             } else {
                 loggableIdInput.value = '';
             }

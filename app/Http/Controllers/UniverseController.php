@@ -21,7 +21,8 @@ class UniverseController extends Controller
         $universes = Universe::whereNull('parent_id')
             ->with(['primaryTasks' => function ($query) {
                 $query->whereNull('completed_at')
-                      ->orderBy('created_at', 'desc'); // Newest tasks first
+                      ->orderByRaw('(SELECT "order" FROM universe_items WHERE universe_items.item_id = tasks.id AND universe_items.item_type = ? AND universe_items.is_primary = 1 LIMIT 1) IS NULL, (SELECT "order" FROM universe_items WHERE universe_items.item_id = tasks.id AND universe_items.item_type = ? AND universe_items.is_primary = 1 LIMIT 1) ASC', ['App\Models\Task', 'App\Models\Task'])
+                      ->orderBy('created_at', 'desc'); // Fallback to newest first
             }, 'secondaryTasks' => function ($query) {
                 $query->whereNull('completed_at');
             }])
@@ -77,7 +78,8 @@ class UniverseController extends Controller
         $children = Universe::whereIn('parent_id', $ids)
             ->with(['primaryTasks' => function ($query) {
                 $query->whereNull('completed_at')
-                      ->orderBy('created_at', 'desc'); // Newest tasks first
+                      ->orderByRaw('(SELECT "order" FROM universe_items WHERE universe_items.item_id = tasks.id AND universe_items.item_type = ? AND universe_items.is_primary = 1 LIMIT 1) IS NULL, (SELECT "order" FROM universe_items WHERE universe_items.item_id = tasks.id AND universe_items.item_type = ? AND universe_items.is_primary = 1 LIMIT 1) ASC', ['App\Models\Task', 'App\Models\Task'])
+                      ->orderBy('created_at', 'desc'); // Fallback to newest first
             }, 'secondaryTasks' => function ($query) {
                 $query->whereNull('completed_at');
             }])
@@ -133,8 +135,10 @@ class UniverseController extends Controller
                 'completed_at' => $task->completed_at?->toIso8601String(),
                 'skipped_at' => $task->skipped_at?->toIso8601String(),
                 'universe_items' => $task->universeItems->map(fn($ui) => [
+                    'id' => $ui->id,
                     'universe_id' => $ui->universe_id,
                     'is_primary' => $ui->is_primary,
+                    'order' => $ui->order,
                 ]),
             ];
         });
@@ -284,5 +288,127 @@ class UniverseController extends Controller
         }
         
         return redirect()->route('universes.index');
+    }
+
+    /**
+     * Display the weekly planning board view.
+     */
+    public function weeklyPlanning()
+    {
+        // Get all universes (flattened, ignoring hierarchy)
+        $universes = Universe::orderBy('status')
+            ->orderBy('weekly_order')
+            ->orderBy('name')
+            ->get();
+
+        // Status options in predefined order
+        $statuses = [
+            'not_started',
+            'next_small_steps',
+            'in_focus',
+            'in_orbit',
+            'dormant',
+            'done',
+        ];
+
+        // Prepare initial data for Vue
+        $initialData = [
+            'universes' => $universes->map(fn($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'status' => $u->status,
+                'weekly_order' => $u->weekly_order,
+            ])->values(),
+            'statuses' => $statuses,
+        ];
+
+        return view('universes.weekly-planning', compact('initialData', 'statuses'));
+    }
+
+    /**
+     * Update universe status and weekly_order (API endpoint).
+     */
+    public function updateWeeklyOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'updates' => 'required|array|min:1',
+            'updates.*.id' => 'required|exists:universes,id',
+            'updates.*.status' => 'required|string|in:not_started,next_small_steps,in_focus,in_orbit,dormant,done',
+            'updates.*.weekly_order' => 'nullable|integer|min:0',
+        ]);
+
+        foreach ($validated['updates'] as $update) {
+            Universe::where('id', $update['id'])->update([
+                'status' => $update['status'],
+                'weekly_order' => $update['weekly_order'],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
+
+    /**
+     * Log time for a universe.
+     */
+    public function log(Request $request, Universe $universe)
+    {
+        try {
+            $validated = $request->validate([
+                'minutes' => 'nullable|numeric|min:0',
+                'time_unit' => 'nullable|string|in:minutes,hours',
+                'notes' => 'nullable|string',
+            ]);
+
+            // Convert minutes to minutes if provided
+            $minutes = null;
+            if (isset($validated['minutes']) && $validated['minutes'] !== null) {
+                $timeUnit = $validated['time_unit'] ?? 'hours'; // Default to hours
+                if ($timeUnit === 'hours') {
+                    $minutes = (int) round($validated['minutes'] * 60);
+                } else {
+                    $minutes = (int) round($validated['minutes']);
+                }
+            }
+
+            \App\Models\Log::create([
+                'loggable_type' => 'App\Models\Universe',
+                'loggable_id' => $universe->id,
+                'minutes' => $minutes,
+                'notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Return JSON for AJAX requests
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Universe logged successfully'
+                ]);
+            }
+
+            return back();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Return JSON for AJAX requests even on validation errors
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $e->errors(),
+                    'message' => 'Validation failed'
+                ], 422);
+            }
+            
+            throw $e;
+        } catch (\Exception $e) {
+            // Return JSON for AJAX requests on general errors
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An error occurred: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            throw $e;
+        }
     }
 }

@@ -30,6 +30,7 @@
 </script>
 
 <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script src="{{ asset('js/InlineEditableField.js') }}"></script>
 <script src="{{ asset('js/InlineEditableTextarea.js') }}"></script>
 <script src="{{ asset('js/InlineEditableSelect.js') }}"></script>
@@ -39,6 +40,7 @@
 <script src="{{ asset('js/InlineEditableUniverses.js') }}"></script>
 <script src="{{ asset('js/TaskCard.js') }}"></script>
 <script src="{{ asset('js/SecondaryTaskCard.js') }}"></script>
+<script src="{{ asset('js/UniverseHeader.js') }}"></script>
 <script src="{{ asset('js/UniverseCard.js') }}"></script>
 <script src="{{ asset('js/UniversesView.js') }}"></script>
 <script>
@@ -55,6 +57,7 @@
         // Check if components are loaded
         if (typeof window.UniversesView === 'undefined' || 
             typeof window.UniverseCard === 'undefined' ||
+            typeof window.UniverseHeader === 'undefined' ||
             typeof window.TaskCard === 'undefined' ||
             typeof window.SecondaryTaskCard === 'undefined') {
             setTimeout(initVueApp, 100);
@@ -63,10 +66,11 @@
         
         // Set component references now that all are loaded
         window.UniverseCard.components.UniverseCard = window.UniverseCard;
+        window.UniverseCard.components.UniverseHeader = window.UniverseHeader;
         window.UniverseCard.components.TaskCard = window.TaskCard;
         window.UniverseCard.components.SecondaryTaskCard = window.SecondaryTaskCard;
-        window.UniverseCard.components.InlineEditableField = window.InlineEditableField;
-        window.UniverseCard.components.InlineEditableSelect = window.InlineEditableSelect;
+        window.UniverseHeader.components.InlineEditableField = window.InlineEditableField;
+        window.UniverseHeader.components.InlineEditableSelect = window.InlineEditableSelect;
         window.TaskCard.components.InlineEditableField = window.InlineEditableField;
         window.TaskCard.components.InlineEditableTextarea = window.InlineEditableTextarea;
         if (window.InlineEditableRecurringTask) {
@@ -135,19 +139,23 @@
                         }
                     },
                     toggleUniverseExpand(universeId) {
-                        const index = this.expandedUniverseIds.indexOf(universeId);
+                        // Normalize universeId to number for consistent comparison
+                        const universeIdNum = Number(universeId);
+                        const index = this.expandedUniverseIds.indexOf(universeIdNum);
                         if (index > -1) {
                             this.expandedUniverseIds.splice(index, 1);
                         } else {
-                            this.expandedUniverseIds.push(universeId);
+                            this.expandedUniverseIds.push(universeIdNum);
                         }
                     },
                     toggleTaskExpand(taskId) {
-                        const index = this.expandedTaskIds.indexOf(taskId);
+                        // Normalize taskId to number for consistent comparison
+                        const taskIdNum = Number(taskId);
+                        const index = this.expandedTaskIds.indexOf(taskIdNum);
                         if (index > -1) {
                             this.expandedTaskIds.splice(index, 1);
                         } else {
-                            this.expandedTaskIds.push(taskId);
+                            this.expandedTaskIds.push(taskIdNum);
                         }
                     },
                     // Find a universe by ID in the nested hierarchy and return its path (all parent IDs)
@@ -172,8 +180,9 @@
                         if (path) {
                             // Expand all universes in the path (parents first, then target)
                             path.forEach(id => {
-                                if (!this.expandedUniverseIds.includes(id)) {
-                                    this.expandedUniverseIds.push(id);
+                                const idNum = Number(id);
+                                if (!this.expandedUniverseIds.some(existingId => Number(existingId) === idNum)) {
+                                    this.expandedUniverseIds.push(idNum);
                                 }
                             });
                             // Scroll to the universe after a short delay to allow DOM to update
@@ -190,8 +199,9 @@
                     // Navigate to a task in its primary universe
                     navigateToTask(taskId, primaryUniverseId) {
                         // Only expand the task (universe expansion removed per user request)
-                        if (!this.expandedTaskIds.includes(taskId)) {
-                            this.expandedTaskIds.push(taskId);
+                        const taskIdNum = Number(taskId);
+                        if (!this.expandedTaskIds.some(id => Number(id) === taskIdNum)) {
+                            this.expandedTaskIds.push(taskIdNum);
                         }
                         
                         // Wait for Vue to update the DOM, then scroll to the task
@@ -540,8 +550,9 @@
                         newUniverse.primary_tasks.unshift(taskToMove);
                         
                         // Ensure task remains expanded (don't expand universe - user clarified this)
-                        if (!this.expandedTaskIds.includes(taskId)) {
-                            this.expandedTaskIds.push(taskId);
+                        // taskIdNum is already declared above, so just use it
+                        if (!this.expandedTaskIds.some(id => Number(id) === taskIdNum)) {
+                            this.expandedTaskIds.push(taskIdNum);
                         }
                         
                         // Scroll to the task after Vue updates the DOM
@@ -609,7 +620,8 @@
                     if (savedExpanded) {
                         try {
                             const ids = JSON.parse(savedExpanded);
-                            this.expandedUniverseIds = ids;
+                            // Normalize IDs to numbers for consistent comparison
+                            this.expandedUniverseIds = ids.map(id => Number(id));
                         } catch (e) {
                             console.error('Error parsing saved expanded universes:', e);
                         }
@@ -620,7 +632,8 @@
                     if (savedExpandedTasks) {
                         try {
                             const ids = JSON.parse(savedExpandedTasks);
-                            this.expandedTaskIds = ids;
+                            // Normalize IDs to numbers for consistent comparison
+                            this.expandedTaskIds = ids.map(id => Number(id));
                         } catch (e) {
                             console.error('Error parsing saved expanded tasks:', e);
                         }

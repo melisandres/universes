@@ -688,7 +688,16 @@ button.tasks-toggle-btn svg {
 .add-task-card {
     border-left: none !important;
     cursor: pointer;
+    background-color: #f1f4f7;
     transition: background-color 0.2s, transform 0.1s, box-shadow 0.2s;
+    /* Make it square and match task card height (task items have 0.5rem padding top/bottom + content) */
+    width: 2.4rem;
+    height: 2.4rem;
+    padding: 0.5rem 0rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
 .add-task-card:hover {
@@ -707,17 +716,34 @@ button.tasks-toggle-btn svg {
     pointer-events: none;
 }
 
+.add-task-card .task-view {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+}
+
+.add-task-card .recurring-icon-placeholder {
+    display: none;
+}
+
 .add-task-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    font-size: 1.2rem;
-    font-weight: bold;
+    width: 100%;
+    height: 100%;
+    font-size: 1.5rem;
+    font-weight: 300;
     color: #6c757d;
     flex-shrink: 0;
     line-height: 1;
+    margin: 0;
+    padding: 0;
 }
 
 .add-task-name {
@@ -919,6 +945,43 @@ button.task-close-edit-btn:hover {
 
 .recurring-icon-placeholder {
     visibility: hidden;
+}
+
+.task-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #adb5bd;
+    cursor: grab;
+    flex-shrink: 0;
+    padding: 0.2rem;
+    margin-right: 0.25rem;
+}
+
+.task-drag-handle:active {
+    cursor: grabbing;
+}
+
+.task-drag-handle svg {
+    width: 10px;
+    height: 10px;
+}
+
+/* Sortable drag states for tasks */
+.task-item-ghost {
+    opacity: 0.4;
+    background-color: #e9ecef;
+}
+
+.task-item-chosen {
+    cursor: grabbing;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: rotate(2deg);
+}
+
+.task-item-drag {
+    opacity: 0.8;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .task-view .task-name {
@@ -1801,4 +1864,195 @@ button.delete-task-btn {
 .task-action-buttons .delete-task-btn:hover,
 button.delete-task-btn:hover {
     background-color: #c82333;
+}
+
+/* ============================================
+   Weekly Planning Board
+   ============================================ */
+
+.weekly-planning-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.weekly-planning-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.weekly-planning-board {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.status-zones-container {
+    display: flex;
+    gap: 0.5rem;
+    min-width: min-content;
+    padding-bottom: 1rem;
+}
+
+.status-zone {
+    flex: 1;
+    min-width: 100px;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.status-zone-header {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #f8f9fa;
+    border-radius: 8px 8px 0 0;
+}
+
+.status-zone-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+    text-transform: capitalize;
+    color: #495057;
+}
+
+.status-zone-count {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-left: 0.5rem;
+}
+
+.status-zone-content {
+    flex: 1;
+    padding: 0.5rem;
+    min-height: 140px;
+    overflow-y: auto;
+}
+
+.status-zone-empty {
+    padding: 1.25rem 0.5rem;
+    text-align: center;
+    color: #adb5bd;
+    font-style: italic;
+    font-size: 0.75rem;
+}
+
+.universe-card-small {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem;
+    margin-bottom: 0.4rem;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-left: 4px solid #6c757d;
+    border-radius: 4px;
+    cursor: move;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.universe-card-small:hover {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-color: #adb5bd;
+}
+
+.universe-card-small.universe-status-not-started {
+    border-left-color: #6c757d;
+}
+
+.universe-card-small.universe-status-next-small-steps {
+    border-left-color: #17a2b8;
+}
+
+.universe-card-small.universe-status-in-focus {
+    border-left-color: #ffc107;
+}
+
+.universe-card-small.universe-status-in-orbit {
+    border-left-color: #28a745;
+}
+
+.universe-card-small.universe-status-dormant {
+    border-left-color: #6c757d;
+}
+
+.universe-card-small.universe-status-done {
+    border-left-color: #6c757d;
+}
+
+.universe-card-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #adb5bd;
+    cursor: grab;
+    flex-shrink: 0;
+    padding: 0.2rem;
+}
+
+.universe-card-handle:active {
+    cursor: grabbing;
+}
+
+.universe-card-handle svg {
+    width: 10px;
+    height: 10px;
+}
+
+.universe-card-name {
+    flex: 1;
+    font-size: 0.8rem;
+    color: #495057;
+    word-break: break-word;
+}
+
+/* Sortable drag states */
+.universe-card-ghost {
+    opacity: 0.4;
+    background-color: #e9ecef;
+}
+
+.universe-card-chosen {
+    cursor: grabbing;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: rotate(2deg);
+}
+
+.universe-card-drag {
+    opacity: 0.8;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive design */
+@media (max-width: 1000px) {
+    .status-zones-container {
+        flex-wrap: wrap;
+    }
+    
+    .status-zone {
+        min-width: calc((100% - 1rem) / 3);
+    }
+}
+
+@media (max-width: 768px) {
+    .status-zones-container {
+        flex-direction: column;
+    }
+    
+    .status-zone {
+        min-width: 100%;
+    }
+    
+    .weekly-planning-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }

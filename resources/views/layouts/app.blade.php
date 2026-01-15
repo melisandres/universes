@@ -13,6 +13,7 @@
     <nav class="main-nav">
         <a href="{{ route('today.index') }}">Today</a>
         <a href="{{ route('universes.index') }}">Universes</a>
+        <a href="{{ route('universes.weekly-planning') }}">Weekly Planning</a>
         <a href="{{ route('tasks.index') }}">Tasks</a>
         <a href="{{ route('recurring-tasks.index') }}">Recurring Tasks</a>
         <a href="{{ route('idea-pools.index') }}">Ideas</a>

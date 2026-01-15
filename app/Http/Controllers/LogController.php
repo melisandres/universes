@@ -40,7 +40,9 @@ class LogController extends Controller
             return $primaryPool ? $primaryPool->name : 'Unassigned';
         })->sortKeys();
         
-        return view('logs.index', compact('logs', 'tasks', 'tasksByUniverse', 'ideas', 'ideasByPool'));
+        $universes = \App\Models\Universe::orderBy('name')->get();
+        
+        return view('logs.index', compact('logs', 'tasks', 'tasksByUniverse', 'ideas', 'ideasByPool', 'universes'));
     }
 
     /**

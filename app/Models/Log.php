@@ -39,4 +39,12 @@ class Log extends Model
         }
         return null;
     }
+
+    public function getUniverseAttribute()
+    {
+        if ($this->loggable_type === 'App\Models\Universe') {
+            return $this->loggable;
+        }
+        return null;
+    }
 }

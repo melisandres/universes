@@ -4,90 +4,93 @@ document.addEventListener('DOMContentLoaded', function() {
         return document.querySelector('meta[name="csrf-token"]')?.content;
     }
 
-    // Task Selection & Detail Panel
+    // Task Selection & Detail Panel (only if elements exist - Vue-based Today view doesn't use this)
     const taskDetailPanel = document.getElementById('task-detail-panel');
     const taskDetailContent = document.getElementById('task-detail-content');
     const closeTaskPanelBtn = document.getElementById('close-task-panel');
     let selectedTaskId = null;
 
-    // Load task detail when task is clicked
-    document.querySelectorAll('.task-item[data-task-id]').forEach(item => {
-        item.addEventListener('click', function(e) {
-            // Don't trigger if clicking on a button or form inside
-            if (e.target.closest('button, form, a')) return;
-            
-            const taskId = this.dataset.taskId;
-            if (taskId) {
-                loadTaskDetail(taskId);
-            }
+    // Only set up task detail panel if it exists (legacy support)
+    if (taskDetailPanel && taskDetailContent) {
+        // Load task detail when task is clicked
+        document.querySelectorAll('.task-item[data-task-id]').forEach(item => {
+            item.addEventListener('click', function(e) {
+                // Don't trigger if clicking on a button or form inside
+                if (e.target.closest('button, form, a')) return;
+                
+                const taskId = this.dataset.taskId;
+                if (taskId) {
+                    loadTaskDetail(taskId);
+                }
+            });
         });
-    });
 
-    function loadTaskDetail(taskId) {
-        selectedTaskId = taskId;
-        
-        // Fetch task data
-        fetch(`/tasks/${taskId}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Fetch the task detail HTML
-            fetch(`/today/task-detail/${taskId}`, {
+        function loadTaskDetail(taskId) {
+            selectedTaskId = taskId;
+            
+            // Fetch task data
+            fetch(`/tasks/${taskId}`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html'
+                    'Accept': 'application/json'
                 }
             })
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
-                }
-                throw new Error('Failed to load task details');
-            })
-            .then(html => {
-                taskDetailContent.innerHTML = html;
-                taskDetailPanel.style.display = 'block';
-                // Re-attach event listeners for forms in the detail panel
-                attachTaskActionListeners();
-                // Initialize time unit conversion for log forms
-                initializeLogTimeConversion();
+            .then(response => response.json())
+            .then(data => {
+                // Fetch the task detail HTML
+                fetch(`/today/task-detail/${taskId}`, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.text();
+                    }
+                    throw new Error('Failed to load task details');
+                })
+                .then(html => {
+                    taskDetailContent.innerHTML = html;
+                    taskDetailPanel.style.display = 'block';
+                    // Re-attach event listeners for forms in the detail panel
+                    attachTaskActionListeners();
+                    // Initialize time unit conversion for log forms
+                    initializeLogTimeConversion();
+                })
+                .catch(() => {
+                    // Fallback: show basic info
+                    showBasicTaskInfo(taskId);
+                });
             })
             .catch(() => {
                 // Fallback: show basic info
                 showBasicTaskInfo(taskId);
             });
-        })
-        .catch(() => {
-            // Fallback: show basic info
-            showBasicTaskInfo(taskId);
-        });
-    }
-
-    function showBasicTaskInfo(taskId) {
-        const taskItem = document.querySelector(`.task-item[data-task-id="${taskId}"]`);
-        if (taskItem) {
-            const taskName = taskItem.querySelector('.task-content strong')?.textContent || 'Task';
-            taskDetailContent.innerHTML = `
-                <div class="task-detail">
-                    <h3>${taskName}</h3>
-                    <p>Loading task details...</p>
-                    <a href="/tasks/${taskId}/edit" class="btn-action btn-edit">Edit Task</a>
-                </div>
-            `;
-            taskDetailPanel.style.display = 'block';
         }
-    }
 
-    // Close task panel
-    if (closeTaskPanelBtn) {
-        closeTaskPanelBtn.addEventListener('click', function() {
-            taskDetailPanel.style.display = 'none';
-            selectedTaskId = null;
-        });
+        function showBasicTaskInfo(taskId) {
+            const taskItem = document.querySelector(`.task-item[data-task-id="${taskId}"]`);
+            if (taskItem && taskDetailContent) {
+                const taskName = taskItem.querySelector('.task-content strong')?.textContent || 'Task';
+                taskDetailContent.innerHTML = `
+                    <div class="task-detail">
+                        <h3>${taskName}</h3>
+                        <p>Loading task details...</p>
+                        <a href="/tasks/${taskId}/edit" class="btn-action btn-edit">Edit Task</a>
+                    </div>
+                `;
+                taskDetailPanel.style.display = 'block';
+            }
+        }
+
+        // Close task panel
+        if (closeTaskPanelBtn) {
+            closeTaskPanelBtn.addEventListener('click', function() {
+                taskDetailPanel.style.display = 'none';
+                selectedTaskId = null;
+            });
+        }
     }
 
     // Collapse/Expand Universe Cards

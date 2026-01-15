@@ -62,7 +62,9 @@ window.TaskCard = {
                    createdDate.getDate() === today.getDate();
         },
         isExpanded() {
-            return this.expandedTaskIds && this.expandedTaskIds.includes(this.task.id);
+            // Normalize IDs to numbers for consistent comparison
+            const taskIdNum = Number(this.task.id);
+            return this.expandedTaskIds && this.expandedTaskIds.some(id => Number(id) === taskIdNum);
         },
         shouldAutoEditName() {
             // Auto-edit name field if task name is the default "new task"
@@ -1165,10 +1167,20 @@ window.TaskCard = {
         }
     },
     template: `
-        <li :class="['task-item', 'task-status-' + computedStatus, isCompleted ? 'task-completed' : '', isCreatedToday ? 'task-created-today' : '']">
+        <li :class="['task-item', 'task-status-' + computedStatus, isCompleted ? 'task-completed' : '', isCreatedToday ? 'task-created-today' : '']" :data-task-id="task.id">
             <!-- View Mode -->
             <div :id="'task-view-' + task.id" 
                  :class="['task-view', 'task-status-' + computedStatus, { 'd-none': isExpanded }]">
+                <div class="task-drag-handle">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="12" r="1"></circle>
+                        <circle cx="9" cy="5" r="1"></circle>
+                        <circle cx="9" cy="19" r="1"></circle>
+                        <circle cx="15" cy="12" r="1"></circle>
+                        <circle cx="15" cy="5" r="1"></circle>
+                        <circle cx="15" cy="19" r="1"></circle>
+                    </svg>
+                </div>
                 <input 
                     type="checkbox" 
                     class="complete-task-checkbox" 

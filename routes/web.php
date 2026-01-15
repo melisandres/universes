@@ -13,6 +13,10 @@ Route::get('/', function () {
     return redirect()->route('universes.index');
 });
 
+Route::get('/universes/weekly-planning', [UniverseController::class, 'weeklyPlanning'])->name('universes.weekly-planning');
+Route::post('/universes/update-weekly-order', [UniverseController::class, 'updateWeeklyOrder'])->name('universes.update-weekly-order');
+Route::post('/universes/{universe}/log', [UniverseController::class, 'log'])->name('universes.log');
+
 Route::resource('universes', UniverseController::class);
 Route::resource('tasks', TaskController::class);
 Route::resource('recurring-tasks', RecurringTaskController::class);
@@ -24,6 +28,7 @@ Route::post('/tasks/{task}/complete', [TaskController::class, 'complete'])->name
 Route::post('/tasks/{task}/skip', [TaskController::class, 'skip'])->name('tasks.skip');
 Route::post('/tasks/{task}/log', [TaskController::class, 'log'])->name('tasks.log');
 Route::post('/tasks/{task}/snooze', [TaskController::class, 'snooze'])->name('tasks.snooze');
+Route::post('/tasks/update-order', [TaskController::class, 'updateOrder'])->name('tasks.update-order');
 
 Route::post('/recurring-tasks/{recurringTask}/seed', [RecurringTaskController::class, 'seed'])->name('recurring-tasks.seed');
 

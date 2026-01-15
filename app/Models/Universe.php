@@ -10,6 +10,7 @@ class Universe extends Model
         'name',
         'parent_id',
         'status',
+        'weekly_order',
     ];
 
     // Parent universe
@@ -69,6 +70,12 @@ class Universe extends Model
     public function universeItems()
     {
         return $this->hasMany(UniverseItem::class);
+    }
+
+    // Logs relationship
+    public function logs()
+    {
+        return $this->morphMany(Log::class, 'loggable');
     }
 
     // Scopes for Today view

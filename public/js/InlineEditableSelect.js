@@ -124,7 +124,7 @@ window.InlineEditableSelect = {
                     :class="{ 'inline-field-cancel-btn': isEditing }"
                     :data-field-id="fieldId" 
                     :aria-label="isEditing ? 'Cancel' : 'Edit ' + (label || editModeLabel)"
-                    @click="isEditing ? cancelEdit() : enterEditMode()"
+                    @click.stop="isEditing ? cancelEdit() : enterEditMode()"
                 >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -134,7 +134,7 @@ window.InlineEditableSelect = {
             
             <!-- View Mode: Display value -->
             <div 
-                v-show="!isEditing"
+                v-if="!isEditing"
                 :id="'inline-view-' + fieldId" 
                 :class="['inline-field-view', { 'inline-field-view-no-label': !label }]"
             >
@@ -159,7 +159,7 @@ window.InlineEditableSelect = {
             
             <!-- Edit Mode: Form select -->
             <div 
-                v-show="isEditing"
+                v-if="isEditing"
                 :id="'inline-edit-' + fieldId" 
                 class="inline-field-edit"
             >

@@ -11,6 +11,7 @@ class UniverseItem extends Model
         'item_type',
         'item_id',
         'is_primary',
+        'order',
     ];
 
     protected $casts = [

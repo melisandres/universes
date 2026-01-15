@@ -579,4 +579,31 @@ class TaskController extends Controller
 
         return back();
     }
+
+    /**
+     * Update task order within a universe (API endpoint).
+     */
+    public function updateOrder(Request $request)
+    {
+        $validated = $request->validate([
+            'universe_id' => 'required|exists:universes,id',
+            'updates' => 'required|array|min:1',
+            'updates.*.universe_item_id' => 'required|exists:universe_items,id',
+            'updates.*.order' => 'required|integer|min:0',
+        ]);
+
+        $universeId = $validated['universe_id'];
+
+        foreach ($validated['updates'] as $update) {
+            \App\Models\UniverseItem::where('id', $update['universe_item_id'])
+                ->where('universe_id', $universeId)
+                ->update([
+                    'order' => $update['order'],
+                ]);
+        }
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
 }

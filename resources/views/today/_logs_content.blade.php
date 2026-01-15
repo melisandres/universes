@@ -14,6 +14,8 @@
                                 <span class="log-context">Task: {{ $log->loggable->name }}</span>
                             @elseif($log->loggable_type === 'App\Models\Idea')
                                 <span class="log-context">Idea: {{ $log->loggable->title ?: substr($log->loggable->body, 0, 30) }}</span>
+                            @elseif($log->loggable_type === 'App\Models\Universe')
+                                <span class="log-context">Universe: {{ $log->loggable->name }}</span>
                             @endif
                         @else
                             <span class="log-context">Standalone Log</span>
